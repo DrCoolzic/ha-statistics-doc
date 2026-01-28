@@ -18,7 +18,7 @@ Home Assistant Core is an **event-driven application** that maintains real-time 
 
 **Entities and States**
 
-An IoT device or service is represented as one or more entities in Home Assistant. Each entity has a current state with associated attributes. For example:
+Entities are the basic building blocks to hold data in Home Assistant. An entity represents a sensor, actor, or function in Home Assistant. Entities are used to monitor physical properties or to control other entities. An entity is usually part of a device or a service.  Entities constantly keep track of their state and associated attributes. For example:
 
 - Entity: `light.kitchen`
 - State: `on`
@@ -33,12 +33,14 @@ Everything that happens in HA is represented as an event:
 - An automation executing
 - A state change occurring
 
+Note that all entities produce state change events. Every time a state changes, a state change event is produced. State change events are just one type of event on the event bus, but there are other kinds of events, such as the [built-in events](https://www.home-assistant.io/docs/configuration/events/#built-in-events-core) that are used to coordinate between various integrations.
+
 **State Update Frequency**
 
 The frequency of state updates varies by integration:
 
 - **Polling integrations**: Update at regular intervals (e.g., every 30 seconds for a temperature sensor)
-- **Push-based integrations**: Update when the device reports a change (e.g., a ZigBee sensor waking from sleep)
+- **Push-based integrations**: Update when the device reports a change (e.g., a ZigBee temperature sensor waking from sleep)
 - **Event-based integrations**: Update immediately when triggered (e.g., a button press)
 
 **Stateless Operation**
@@ -69,22 +71,21 @@ According to the Nyquist-Shannon sampling theorem, a 5-second sampling rate mean
 - **Default**: SQLite (suitable for most installations)
 - **Alternatives**: PostgreSQL, MySQL/MariaDB (for advanced setups with high write volumes)
 
-> **Further Reading**: See the [Database Schema documentation](https://developers.home-assistant.io/docs/architecture/database) for complete table descriptions.
+> **Further Reading**: See the [Database Schema documentation](https://www.home-assistant.io/docs/backend/database/#schema) for complete table descriptions.
 
 ---
 
 ### 1.3 The States Table
 
-The `states` table is the primary storage location for entity state history. Understanding its structure is essential for working with raw data and statistics.
+The Recorder Integration writes numerous tables from the database, but in the context of this document, the table we are interested in is the `state` table that is the primary storage location for entity state history. Understanding its structure is essential for working with raw data and statistics.
 
-#### Table Schema
-
+#### Used Fields
 
 | Field                   | Type         | Description                                                                           |
-| ------------------------- | -------------- | --------------------------------------------------------------------------------------- |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------- |
 | `state_id`              | INTEGER      | Primary key, auto-incrementing unique identifier for each state record                |
 | `metadata_id`           | INTEGER      | Foreign key to`states_meta` table (contains `entity_id` mapping)                      |
-| `state`                 | VARCHAR(255) | The actual state value (e.g., "234.0", "on", "off", "23.5°C")                        |
+| `state`                 | VARCHAR(255) | The actual state value (e.g., "234.0", "on", "off", "23.5°C")                         |
 | `last_updated_ts`       | FLOAT        | Unix timestamp when state was last updated (even if only attributes changed)          |
 | `last_changed_ts`       | FLOAT        | Unix timestamp when the actual state value changed (NULL if same as`last_updated_ts`) |
 | `last_reported_ts`      | FLOAT        | Unix timestamp when the state was last reported by the integration                    |
@@ -97,9 +98,8 @@ The `states` table is the primary storage location for entity state history. Und
 
 #### Deprecated Fields (Still Present for Migration)
 
-
 | Field               | Replacement                     | Notes                                          |
-| --------------------- | --------------------------------- | ------------------------------------------------ |
+| ------------------- | ------------------------------- | ---------------------------------------------- |
 | `entity_id`         | `states_meta.entity_id`         | Normalized to avoid repetition                 |
 | `attributes`        | `state_attributes.shared_attrs` | Normalized to reduce storage                   |
 | `last_changed`      | `last_changed_ts`               | Converted to timestamp format                  |
@@ -115,9 +115,9 @@ The `states` table is the primary storage location for entity state history. Und
 - **`last_changed_ts`**: Changes only when the state value itself changes.  The `last_changed_ts` field is stored as NULL when it equals `last_updated_ts` to save database space
 - **`last_reported_ts`**: The timestamp from the integration/device
 
-Among all the entities found in the status table, the ones that interest us are the entities that are considered statistics. We will look at the definition criteria for statistical entities in more detail, but we can already say that there are two main types: the **measurement** type and the **metered** type.
+Among all the entities found in the status table, in this document we focus on statistical entities. We will look at the detail definition of a statistical entities in more detail, but we will see that they belong to two categories: the **measurement** category and the **total** category.
 
-Lets first take the example an integration that poll the apparent power of a house every minute. We use the following query:
+Lets take a first example an integration that poll the apparent power of a house every minute. We use the following query to select the state entries of a specific entity in a specified date range.
 
 ```sqlite
 SELECT 
@@ -145,7 +145,7 @@ ORDER BY s.last_updated_ts;
 | sensor.linky_sinsts | 1827  | 1/27/2026 13:59 | 1/27/2026 13:59 | 1/27/2026 13:59 |
 | sensor.linky_sinsts | 1820  | 1/27/2026 14:00 | 1/27/2026 14:00 | 1/27/2026 14:00 |
 
-Here we can see that we get a value every minutes.
+Here we can see that we have a new state entry every minutes.
 
 This is quite different from a ZigBee temperature sensor that reports value at a pace fixed by the device
 
@@ -156,8 +156,8 @@ This is quite different from a ZigBee temperature sensor that reports value at a
 | sensor.family_temperature | 13.6  | 1/27/26 12:38 | 1/27/26 12:38 | 1/27/26 12:38 |
 | sensor.family_temperature | 13.64 | 1/27/26 12:51 | 1/27/26 12:51 | 1/27/26 12:51 |
 
-The two devices presented above are of type measurement (e.g. temperature)  where values goes up and down.
-We also have devices of type metered (e.g. energy consumption) where the return values are increasing.
+The two entities presented above belong to the category measurement (e.g. temperature)  where the state values goes up and down.
+We also have entities of that belongs to the category metered (e.g. energy consumption) where the state values are monotonically increasing.
 
 | entity_id         | state    | last_updated    | last_changed    | last_reported   |
 | ----------------- | -------- | --------------- | --------------- | --------------- |
@@ -169,43 +169,43 @@ We also have devices of type metered (e.g. energy consumption) where the return 
 | sensor.linky_east | 72201200 | 1/27/2026 13:59 | 1/27/2026 13:59 | 1/27/2026 13:59 |
 | sensor.linky_east | 72201224 | 1/27/2026 14:00 | 1/27/2026 14:00 | 1/27/2026 14:00 |
 
-
-
 ## Part 2: Statistics Generation
 
 ### 2.1 What Are Statistics?
 
-Statistics are **aggregated, compressed representations** of entity data over time. Unlike the `states` table which stores every state change, the `statistics` table stores:
-
-- **Short-term statistics**: 5-minute intervals (retained for 10 days by default)
-- **Long-term statistics**: 1-hour intervals (retained indefinitely by default)
-
-This dramatically reduces storage requirements while preserving trend data.
+Home Assistant supports statistics, which are **aggregated and compressed representations** of entity data over time. Unlike the *states* table, which stores every state change, the *short-term statistics* table stores information every 5 minutes, and the *long-term statistics* table stores information once every hour. This dramatically reduces storage requirements while preserving trend data.
 
 ### 2.2 Which Entities Generate Statistics?
 
-Statistics are automatically generated for **any entity** that meets ALL of these criteria:
+Statistics are automatically generated for **entities** that meet certain criteria that we will detail. They can be classified into two categories: *statistical measurement entities* and *statistical counter entities*. Note that all statistical entities belong to sensor integration.
 
-1. **Has a `state_class` property** with value:
-   - `measurement` (values that fluctuate)
-   - `total` (cumulative counter)
-   - `total_increasing` (cumulative counter that only increases)
-2. **Has numerical state values**
-3. **Has a `unit_of_measurement` property**
+#### 2.2.1 Measurement Statistics representing a measurement
 
-The `state_class` attribute determines how statistics are calculated:
+Their `state_class` property must be set to `measurement` or `measurement_angle` and the `device_class` must not be either of `date`, `enum`, `energy`, `gas`, `monetary`, `timestamp`, `volume` or `water`. Usually their `unit_of_measurement` property is also defined. In this case Home Assistant tracks the **state**, **min**, **max** and **mean** values during the statistics period and update them every 5 minutes.
 
+The `state` of "*measurement statistics*" represents a **real-time measurement**, such as current temperature, humidity, or electrical power. Their sate should not be a historical aggregation such as statistics or forecasts for the future. For example, tomorrow's forecast temperature, yesterday's energy consumption, or any other data that does not include a *current measurement* should not be marked as a measurement. The statistical `measurement_angle` entities are similar with the above but in this case the sate represent represents a real-time measurement for angles measured in degrees such as current wind direction.
 
-| State Class        | Description                            | Example                                  |
-| ------------------ | -------------------------------------- | ---------------------------------------- |
-| `measurement`      | Value can go up or down                | Temperature, humidity, power consumption |
-| `total`            | Monotonically increasing counter       | Total kWh consumed, total water used     |
-| `total_increasing` | Same as`total`, but resets are handled | Smart meter readings that might reset    |
+Note that contrary to the next category these statistics do not represent a total amount.
 
-There are two categories of statistics: the **measurement** type and the **metered** type
+#### 2.2.2 Counter Statistics representing a total amount
 
-1. The *measurement* entities do not represent a total amount. Their `state_class` property must be set to `measurement`, and the `device_class` must **not** be either of `date`, `enum`, `energy`, `gas`, `monetary`, `timestamp`, `volume` or `water`. In this case Home Assistant tracks the **min**, **max** and **mean** values during the statistics period. A typical usage is the measurement of temperature.
-2. The *metered* entities represents a total amount. Their `state_class` property must be equal to either `total` or `total_increasing`. In this case Home Assistant tracks the **state**, **sum** and **last_reset** values during the statistics period. Typical usage is for tracking a total amount value that may optionally reset periodically, like this month's energy consumption, today's energy production, the weight of pellets used to heat the house over the last week or the yearly growth of a stock portfolio. When `state_class` is  `total` the usage of `last_reset` allows to track increasing or decreasing state like a stock portfolio (even though we would prefer that it always increase) .
+Their `state_class` property must be set to `total` or `total_increasing` and they may use the `last_reset` attribute. In this case Home Assistant tracks the **state**, **sum** and **last_reset** values during the statistics period and update them every 5 minutes. Computation of the **sum** field is complex and not presented here please refer to [Entities representing a total amount](https://developers.home-assistant.io/docs/core/entity/sensor/#entities-representing-a-total-amount) for more details.
+
+The state of "*counter statistic*" represent a total amount. Entities tracking a total amount have a value that may optionally reset periodically, like this month's energy consumption, today's energy production, the weight of pellets used to heat the house over the last week or the yearly growth of a stock portfolio. The sensor's value when the first statistics is compiled is used as the initial zero-point.
+
+This category of statistics can be further split in
+
+1. `state_class` set to `total`
+   The state represents a total amount that can both **increase and decrease**, e.g. a net energy meter. This state class should not be used for sensors where the absolute value is interesting instead of the accumulated growth or decline, for example remaining battery capacity or CPU load; in such cases the `state_class` should be set to `measurement` instead. Usage of last_reset indicates the time when an accumulating sensor such as an electricity usage meter, gas meter, water meter etc. is initialized. When changing `last_reset`, the `state` must be a valid number.
+2. `state_class` set to `total_increasing`
+   Similar to  statistics with `state_class` set to `total` with the restriction that the state represents a monotonically increasing positive total which periodically restarts counting from 0, e.g. a daily amount of consumed gas, weekly water consumption or lifetime energy consumption. A decreasing value is interpreted as the start of a new meter cycle or the replacement of the meter.
+
+**Examples of counter statistics:**
+
+- The sensor's value never resets, e.g. a lifetime total energy consumption or production: `state_class=total` with`last_reset` not set or set to `None`
+- The sensor's value may reset to 0, and its value can only increase: `state_class=total_increasing`. Examples: energy consumption aligned with a billing cycle, e.g. monthly, an energy meter resetting to 0 every time it's disconnected
+- The sensor's value may reset to 0, and its value can both increase and decrease: `state_class=total` with `last_reset` updated when the value resets. Examples: net energy consumption aligned with a billing cycle, e.g. monthly.
+- The sensor's state is reset with every state update, for example a sensor updating every minute with the energy consumption during the past minute: `state_class=total`  with `last_reset` updated every state change.
 
 [TODO check if information correct - Add here or in section 1.3 example of different state table for meter type and subtype]
 
@@ -213,37 +213,87 @@ There are two categories of statistics: the **measurement** type and the **meter
 
 ### 2.3 Statistics Generation Process
 
-Home Assistant provides support to process the *statistics entities*. 
+Home Assistant provides support to process statistics.
 
-1. **Entity state changes** are recorded in the `states` table to keeps track of supported entities and different elements of the entity state. 
+1. **Entity state changes** are recorded in the `states` table to keeps track of supported entities and different elements of the entity state.
 
 2. **Every 5 minutes**:
 
-   - it processes the statistics entities in the state table and perform some calculation.
+   - it processes the statistics entities in the state table and perform appropriate calculation.
 
-   - statistics information are written to `statistics_short_term` table according to the category of the statistic:
-     - For `measurement`: mean, min, max are saved
-   
-     - For `total`: sum and state are saved
-   
+   - statistics information are written to `statistics_short_term` table according to their category :
+     - For `measurement`: **state**, **mean**, **min**, **max** are saved
+     - For `counter`: **state** and **sum** (growth) and **last_reset** are saved
+
 3. **Every 60 minutes**, short-term stats are aggregated into hourly long-term statistics
 
 ## Part 3: The Statistics Tables
 
-TODO
+In this document, we will focus solely on the `statistics_meta` and `statistics` tables. Note that the `statistics_short_term` table contains the same fields as the `statistics` table. The only difference is that this table is updated every 5 minutes and purged every 10 days.
 
-The statistics are stored in the `statistics` and `statistics_short_term` tables with this basic structure:
+### 3.1 statistics_meta Table
 
-**Key Fields:**
+| **Field**               | **Description**                                        | **Example**                                                |
+| ----------------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
+| **id**                  | Primary key, unique ID for each statistic              | 1, 2, 3...                                                 |
+| **statistic_id**        | Entity or statistic identifier                         | "sensor.linky_urms1", "sensor.energy_daily"                |
+| **source**              | Where the statistic comes from                         | "recorder" (from states), "sensor" (from sensor  platform) |
+| **unit_of_measurement** | Unit of the data                                       | "V", "kWh", "W", "°C",  "%"                                |
+| **has_mean**            | Deprecated  (replaced by mean_type)                    | Null                                                       |
+| **has_sum**             | Boolean: Does this statistic calculate cumulative sum? | 0 or 1                                                     |
+| **name**                | Human-friendly name (optional)                         | "Living Room Temperature"                                  |
+| **mean_type**           | Int: What kind of mean                                 | Type of mean: 0=none, 1=arithmetic, 2=circular             |
 
-- `metadata_id`: Links to entity
-- `start_ts`: Start of the time interval
-- `mean`: Average value during the interval
-- `min`: Minimum value
-- `max`: Maximum value
-- `sum`: Cumulative sum (for `total` state class)
-- `state`: Last known state in the interval
+**Understanding mean_type**
 
+| **mean_type** | **Value** | **Meaning**              | **Use Case**                     |
+| ------------- | --------- | ------------------------ | -------------------------------- |
+| NONE          | 0         | No mean calculated       | Counters, totals (energy meters) |
+| ARITHMETIC    | 1         | Standard arithmetic mean | Temperature, humidity, power     |
+| CIRCULAR      | 2         | Circular/angular mean    | Wind direction, compass bearings |
+
+**Mean_type / Has_sum combination table**
+
+| **mean_type** | **has_sum** | **Type**               | **Columns Available** | **Example**          |
+| ------------- | ----------- | ---------------------- | --------------------- | -------------------- |
+| 1             | 0           | Arithmetic measurement | mean, min, max, state | Temperature, voltage |
+| 2             | 0           | Circular measurement   | mean, min, max, state | Wind direction       |
+| 0             | 1           | Total/Counter          | sum, state            | Energy meter (Linky) |
+
+The other combinations are invalid.
+
+### 3.2 statistics Table
+
+**Used Fields**
+
+| **Field**         | **Description**                                              | **Example**                                                  |
+| ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **id**            | Primary key for this  statistic record                       | Auto-increment                                               |
+| **created_ts**    | When the statistics **were calculated and written** to the database | 2024-01-11 12:05:00                                          |
+| **metadata_id**   | Foreign key to  statistics_meta                              | References  statistics_meta.id                               |
+| **start_ts**      | Unix timestamp of period  start                              | 2024-01-11 12:00:00 (start of  hour)                         |
+| **mean**          | Average value during the  period                             | 234.5 (average voltage)                                      |
+| **mean_weight**   | is a **weight factor** used when calculating **circular mean values** for angular measurements like wind direction, where standard arithmetic averaging would be incorrect. | see [statistics fields documentation](statistics_fields_documentation.md) |
+| **min**           | Minimum value during the  period                             | 230.0 (lowest voltage)                                       |
+| **max**           | Maximum value during the  period                             | 238.0 (highest voltage)                                      |
+| **last_reset_ts** | When the counter last  reset (for sum)                       | Timestamp of reset, or  NULL                                 |
+| **state**         | Last known state at end  of period                           | 235.0 (final voltage  reading)                               |
+| **sum**           | Cumulative sum (for  counters like energy)                   | 1523.4 (total kWh)                                           |
+
+**Deprecated Fields (Still Present for Migration)**
+
+| Field        | Replacement     | Notes                         |
+| ------------ | --------------- | ----------------------------- |
+| `created`    | `created_ts`    | Converted to timestamp format |
+| `start`      | `start_ts`      | Converted to timestamp format |
+| `last_reset` | `last_reset_ts` | Converted to timestamp format |
+
+**Specific Fields information**
+
+see [statistics fields documentation](statistics_fields_documentation.md) for a detail description the fields that are usually not well documented.
+
+- The `created_ts` field is a **Unix timestamp** (float) that records **when the statistic record was created/written to the database** by Home Assistant.
+- The `mean_weight` field is a **weight factor** used when calculating **circular mean values** for angular measurements like wind direction, where standard arithmetic averaging would be incorrect.
 
 ---
 
