@@ -118,7 +118,7 @@ The Recorder Integration writes to numerous tables in the database, but in the c
 - **`last_changed_ts`**: Changes only when the state value itself changes. The `last_changed_ts` field is stored as NULL when it equals `last_updated_ts` to save database space
 - **`last_reported_ts`**: The timestamp from the integration/device
 
-#### State Tracking for Statistical Entities
+#### State Tracking for Statistics
 
 The `states` table tracks all entity state changes, but in this document we focus specifically on **statistical entities** - those that generate long-term statistics. These entities belong to two main categories: the **measurement** category and the **total** category (we'll explore these in detail in Part 2).
 
@@ -139,20 +139,20 @@ FROM states s
 INNER JOIN states_meta sm ON s.metadata_id = sm.metadata_id
 WHERE sm.entity_id = 'sensor.linky_sinsts' 
 AND s.last_updated_ts BETWEEN 
-    strftime('%s', '2026-01-27 11:59:00') 
-    AND strftime('%s', '2026-01-27 13:01:00')
+    strftime('%s', '2026-01-27 13:00:00') 
+    AND strftime('%s', '2026-01-27 14:00:00')
 ORDER BY s.last_updated_ts;
 ```
 
 | entity_id           | state | last_updated    | last_changed    | last_reported   |
 | ------------------- | ----- | --------------- | --------------- | --------------- |
-| sensor.linky_sinsts | 2039  | 1/27/2026 12:59 | 1/27/2026 12:59 | 1/27/2026 12:59 |
 | sensor.linky_sinsts | 2040  | 1/27/2026 13:00 | 1/27/2026 13:00 | 1/27/2026 13:00 |
 | sensor.linky_sinsts | 2030  | 1/27/2026 13:01 | 1/27/2026 13:01 | 1/27/2026 13:01 |
+| sensor.linky_sinsts | 2023  | 1/27/2026 13:02 | 1/27/2026 13:02 | 1/27/2026 13:02 |
 | ...                 | ...   | ...             | ...             | ...             |
+| sensor.linky_sinsts | 1831  | 1/27/2026 13:57 | 1/27/2026 13:57 | 1/27/2026 13:57 |
 | sensor.linky_sinsts | 1825  | 1/27/2026 13:58 | 1/27/2026 13:58 | 1/27/2026 13:58 |
 | sensor.linky_sinsts | 1827  | 1/27/2026 13:59 | 1/27/2026 13:59 | 1/27/2026 13:59 |
-| sensor.linky_sinsts | 1820  | 1/27/2026 14:00 | 1/27/2026 14:00 | 1/27/2026 14:00 |
 
 Here we can see that we have a new state entry every minute.
 
@@ -219,7 +219,7 @@ Statistical entities can be classified into two categories: **measurement statis
 - Must have a `unit_of_measurement` defined
 
 **What is tracked:**
-Home Assistant tracks the **state**, **min**, **max**, and **mean** values during each statistics period, updating them every 5 minutes.
+Home Assistant tracks the **min**, **max**, and **mean** values during each statistics period, updating them every 5 minutes.
 
 **Important:** The `state` of "measurement statistics" represents a **real-time measurement at a point in time**, such as current temperature, humidity, or electrical power. Their state should represent a **current measurement**, not historical data, aggregations, or forecasts. For example:
 
@@ -364,7 +364,7 @@ The other combinations are invalid.
 | `metadata_id`   | Foreign key to statistics_meta                                  | References statistics_meta.id                            |
 | `start_ts`      | Unix timestamp of period start                                  | 2024-01-11 12:00:00 (start of hour)                      |
 | `mean`          | Average value during the period                                 | 234.5 (average voltage)                                  |
-| `mean_weight`   | Weight factor for circular averaging (angular measurements)     | See [statistics fields documentation](statistics_fields_documentation.md) |
+| `mean_weight`   | Weight factor for circular averaging (angular measurements)     | See [statistics fields documentation](stat_fields.md)    |
 | `min`           | Minimum value during the period                                 | 230.0 (lowest voltage)                                   |
 | `max`           | Maximum value during the period                                 | 238.0 (highest voltage)                                  |
 | `last_reset_ts` | When the counter last reset (for sum)                           | Timestamp of reset, or NULL                              |
@@ -383,8 +383,124 @@ The other combinations are invalid.
 
 See [statistics fields documentation](statistics_fields_documentation.md) for a detailed description of fields that are not well documented elsewhere:
 
-- **`created_ts`**: A Unix timestamp (float) that records when the statistic record was created/written to the database by Home Assistant (typically at or shortly after `start_ts + period_duration`)
-- **`mean_weight`**: A weight factor used when calculating circular mean values for angular measurements like wind direction, where standard arithmetic averaging would be incorrect
+**`created_ts`**: A Unix timestamp (float) that records when the statistic record was created/written to the database by Home Assistant (typically at or shortly after `start_ts + period_duration`)
+
+**`mean_weight`**: A weight factor used when calculating circular mean values for angular measurements like wind direction, where standard arithmetic averaging would be incorrect
+
+### 2.5 Short and long term Statistics tracking
+
+We now look at what is stored in the statistics_short_term table and statistics table using the same practical examples used in Part 1
+
+#### Example 1: Power Consumption
+
+We use the following query to retrieve information from the statistics  tables
+
+```sqlite
+SELECT 
+  sm.statistic_id,
+  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
+  datetime(s.created_ts, 'unixepoch', 'localtime') as created_at,
+  s.mean,
+  s.min,
+  s.max
+FROM statistics_short_term s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.linky_sinsts'
+ AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 13:00:00'
+ AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 14:00:00'
+ORDER BY s.start_ts ASC;
+```
+
+##### Short term statistics
+
+| statistic_id        | period_start    | created_at      | mean        | min  | max  |
+| ------------------- | --------------- | --------------- | ----------- | ---- | ---- |
+| sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 13:05 | 2026.510631 | 1987 | 2040 |
+| sensor.linky_sinsts | 1/27/2026 13:05 | 1/27/2026 13:10 | 1973.135533 | 1958 | 1989 |
+| sensor.linky_sinsts | 1/27/2026 13:10 | 1/27/2026 13:15 | 1955.405006 | 1952 | 1959 |
+| sensor.linky_sinsts | 1/27/2026 13:15 | 1/27/2026 13:20 | 1889.207249 | 1840 | 1966 |
+| sensor.linky_sinsts | 1/27/2026 13:20 | 1/27/2026 13:25 | 1822.634674 | 1789 | 1857 |
+| sensor.linky_sinsts | 1/27/2026 13:25 | 1/27/2026 13:30 | 1857.703889 | 1834 | 1880 |
+| sensor.linky_sinsts | 1/27/2026 13:30 | 1/27/2026 13:35 | 1826.921793 | 1786 | 1857 |
+| sensor.linky_sinsts | 1/27/2026 13:35 | 1/27/2026 13:40 | 1754.036337 | 1704 | 1863 |
+| sensor.linky_sinsts | 1/27/2026 13:40 | 1/27/2026 13:45 | 1849.280724 | 1825 | 1863 |
+| sensor.linky_sinsts | 1/27/2026 13:45 | 1/27/2026 13:50 | 1890.200181 | 1783 | 1912 |
+| sensor.linky_sinsts | 1/27/2026 13:50 | 1/27/2026 13:55 | 1797.37581  | 1780 | 1846 |
+| sensor.linky_sinsts | 1/27/2026 13:55 | 1/27/2026 14:00 | 1826.968478 | 1822 | 1831 |
+
+##### Long Term Statistics
+
+| statistic_id        | period_start    | created_at      | mean        | min  | max  |
+| ------------------- | --------------- | --------------- | ----------- | ---- | ---- |
+| sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 14:00 | 1872.448359 | 1704 | 2040 |
+
+#### Example 2: ZigBee Temperature Sensor Statistics
+
+##### Zigbee Short Term Statistics
+
+| statistic_id              | period_start    | created_at      | mean  | min   | max   |
+| ------------------------- | --------------- | --------------- | ----- | ----- | ----- |
+| sensor.family_temperature | 1/27/26 1:00 PM | 1/27/26 1:05 PM | 13.61 | 13.57 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:05 PM | 1/27/26 1:10 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:10 PM | 1/27/26 1:15 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:15 PM | 1/27/26 1:20 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:20 PM | 1/27/26 1:25 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:25 PM | 1/27/26 1:30 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:30 PM | 1/27/26 1:35 PM | 13.63 | 13.63 | 13.63 |
+| sensor.family_temperature | 1/27/26 1:35 PM | 1/27/26 1:40 PM | 13.61 | 13.6  | 13.63 |
+| sensor.family_temperature | 1/27/26 1:40 PM | 1/27/26 1:45 PM | 13.6  | 13.6  | 13.6  |
+| sensor.family_temperature | 1/27/26 1:45 PM | 1/27/26 1:50 PM | 13.6  | 13.6  | 13.6  |
+| sensor.family_temperature | 1/27/26 1:50 PM | 1/27/26 1:55 PM | 13.62 | 13.6  | 13.64 |
+| sensor.family_temperature | 1/27/26 1:55 PM | 1/27/26 2:00 PM | 13.64 | 13.64 | 13.64 |
+
+##### Zigbee Long Term Statistics
+
+| statistic_id        | period_start        | created_at          | mean    | min  | max  |
+| ------------------- | ------------------- | ------------------- | ------- | ---- | ---- |
+| sensor.linky_sinsts | 2026-01-27 13:00:00 | 2026-01-27 14:00:10 | 2492.16 | 1955 | 5530 |
+
+#### Example 3: Energy Meter (Total/Counter Type) Statistics
+
+For a total type of statistics we need to look at different fields so we use the following query
+
+```sqlite
+SELECT 
+  sm.statistic_id,
+  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
+  datetime(s.created_ts, 'unixepoch', 'localtime') as created_at,
+  s.state,
+  s.sum,
+  datetime(s.last_reset_ts, 'unixepoch', 'localtime') as last_reset
+FROM statistics_short_term s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.linky_east'
+ AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 13:00:00'
+ AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 14:00:00'
+ORDER BY s.start_ts ASC;
+```
+
+##### Counter Short Term Statistics
+
+| statistic_id      | period_start        | created_at          |  state     | sum      | last_reset |
+| ----------------- | ------------------- | ------------------- | -----------| -------- | ---------- |
+| sensor.linky_east | 2026-01-27 13:00:00 | 2026-01-27 13:05:10 | 72199616.0 | 294296.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:05:00 | 2026-01-27 13:10:10 | 72199768.0 | 294448.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:10:00 | 2026-01-27 13:15:10 | 72199920.0 | 294600.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:15:00 | 2026-01-27 13:20:10 | 72200064.0 | 294744.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:20:00 | 2026-01-27 13:25:10 | 72200208.0 | 294888.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:25:00 | 2026-01-27 13:30:10 | 72200352.0 | 295032.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:30:00 | 2026-01-27 13:35:10 | 72200488.0 | 295168.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:35:00 | 2026-01-27 13:40:10 | 72200624.0 | 295304.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:40:00 | 2026-01-27 13:45:10 | 72200768.0 | 295448.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:45:00 | 2026-01-27 13:50:10 | 72200920.0 | 295600.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:50:00 | 2026-01-27 13:55:10 | 72201056.0 | 295736.0 | `NULL`     |
+| sensor.linky_east | 2026-01-27 13:55:00 | 2026-01-27 14:00:10 | 72201200.0 | 295880.0 | `NULL`     |
+
+##### Counter Long Term Statistics
+
+| statistic_id      | period_start        | created_at          | state      | sum      | last_reset |
+| ----------------- | ------------------- | ------------------- | ---------- | -------- | ---------- |
+| sensor.linky_east | 2026-01-27 13:00:00 | 2026-01-27 14:00:10 | 72201200.0 | 295880.0 | `NULL`     |
 
 ---
 
@@ -401,9 +517,12 @@ See [statistics fields documentation](statistics_fields_documentation.md) for a 
 
 #### Via the UI
 
-- Developer Tools → Statistics
+- [Developer Tools](https://www.home-assistant.io/docs/tools/dev-tools/) → Statistics
 - Energy Dashboard (for energy entities)
-- History graphs automatically use statistics for long time ranges
+- [History graphs](https://www.home-assistant.io/dashboards/history-graph/) automatically use statistics for long time ranges
+- [History panels](https://www.home-assistant.io/integrations/history/)
+- [Statistics graph card](https://www.home-assistant.io/dashboards/statistics-graph)
+- And many many custom card
 
 #### Via Services
 
@@ -509,9 +628,52 @@ The key takeaways:
 
 ---
 
-## Additional Resources
+## References
 
-- [Home Assistant Recorder Documentation](https://www.home-assistant.io/integrations/recorder/)
-- [Statistics Integration](https://www.home-assistant.io/integrations/analytics/)
-- [Database Schema Reference](https://developers.home-assistant.io/docs/architecture/database)
-- [Energy Dashboard Guide](https://www.home-assistant.io/docs/energy/)
+### [Home Assistant Documentation](https://www.home-assistant.io/docs/)
+
+- [Events](https://www.home-assistant.io/docs/configuration/events/)
+- [Entities and domains](https://www.home-assistant.io/docs/configuration/entities_domains/)
+- [State and state object](https://www.home-assistant.io/docs/configuration/state_object/)
+- [Database](https://www.home-assistant.io/docs/backend/database/)
+- [Developer tools](https://www.home-assistant.io/docs/tools/dev-tools/#statistics-tab)
+- [Recorder integration](https://www.home-assistant.io/integrations/recorder/)
+- [History integration](https://www.home-assistant.io/integrations/history/)
+- [Filter integration](https://www.home-assistant.io/integrations/filter/)
+- [Statistics integration](https://www.home-assistant.io/integrations/statistics/)
+- [Analytics Integration](https://www.home-assistant.io/integrations/analytics/)
+
+## [Home Assistant Developer Docs](https://developers.home-assistant.io/)
+
+- [Sensor entity](https://developers.home-assistant.io/docs/core/entity/sensor)
+- [Clear up storage](https://www.home-assistant.io/more-info/free-space/)
+- [Core architecture](https://developers.home-assistant.io/docs/architecture/core/)
+- [Entity interaction with Home Assistant Core](https://developers.home-assistant.io/docs/architecture/devices-and-services/#entity-interaction-with-home-assistant-core)
+- [Long Term Statistics](https://developers.home-assistant.io/docs/core/entity/sensor/#long-term-statistics)
+
+## [Home Assistant Data Science Portal](https://data.home-assistant.io/)
+
+- [Long- and short-term statistics | Home Assistant Data Science Portal](https://data.home-assistant.io/docs/statistics/)
+- [Home Assistant Data Science | Home Assistant Data Science Portal](https://data.home-assistant.io/)
+- [Home Assistant Recorder Runs | Home Assistant Data Science Portal](https://data.home-assistant.io/docs/recorder/)
+
+## Other Web Pages
+
+- [Taming my Home Assistant database growth - Koskila.net](https://www.koskila.net/taming-my-home-assistant-database-growth/)
+- [Maîtriser votre base de données Home Assistant](https://www.hacf.fr/bd-recorder-statistiques/#les-données-dans-ha)
+- [Custom Integration to import long term statistics from a file like csv or tsv - Share your Projects! / Custom Integrations - Home Assistant Community](https://community.home-assistant.io/t/custom-integration-to-import-long-term-statistics-from-a-file-like-csv-or-tsv/689793)
+- [Migrate back from MariaDB to the default SQLite - Community Guides - Home Assistant Community](https://community.home-assistant.io/t/migrate-back-from-mariadb-to-the-default-sqlite/604278)
+- [Loading, Manipulating, Recovering and Moving Long Term Statistics in Home Assistant - Community Guides - Home Assistant Community](https://community.home-assistant.io/t/loading-manipulating-recovering-and-moving-long-term-statistics-in-home-assistant/953802)
+- [Migrer des données historiques entre deux instances Home Asssistant | LPRP.fr](https://www.lprp.fr/2025/06/home-assistant-migration-donnees/)
+- [Mastering Home Assistant's Recorder and History: Optimizing Data for Performance and Insight](https://newerest.space/mastering-home-assistant-recorder-history-optimization/)
+- [Display / output Home Assistant data as a table - Reporting](https://www.libe.net/en/ha-tabledata)
+- [Updating statistics from integration and calculation of max, min, mean values - Development - Home Assistant Community](https://community.home-assistant.io/t/updating-statistics-from-integration-and-calculation-of-max-min-mean-values/824001)
+
+## Other GitHub Page
+
+- [Domain vs platform vs component vs integration vs ... · Issue #570 · home-assistant/developers.home-assistant](https://github.com/home-assistant/developers.home-assistant/issues/570)
+- [DrEvily/Home-Assistant-Sensor-Visualizer: Tool to analyse csv exported Entities from Home Assistant Recorder. Exported Sensor data can be visulaized and analyzed with HA_Sensor_Visualizer. It allows to zoom into data as well as with cursor individual datapoints can be analyzed.](https://github.com/DrEvily/Home-Assistant-Sensor-Visualizer)
+- [Core Entity Types | home-assistant/home-assistant.io | DeepWiki](https://deepwiki.com/home-assistant/home-assistant.io/7.1-core-entity-types)
+- [What Are Entities In Home Assistant?](https://spicehometech.com/how-to/basics/what-are-entities-in-home-assistant/)
+- [Entity | Home Assistant Developer Docs](https://developers.home-assistant.io/docs/core/entity/)
+- [alexarch21/history-explorer-card: A card for Home Assistant Lovelace for exploring the history of your entities interactively and in real time.](https://github.com/alexarch21/history-explorer-card) (deprecated)
