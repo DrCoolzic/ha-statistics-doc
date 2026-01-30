@@ -325,29 +325,225 @@ It worth noting that the `statistics/statistics_short_term` tables are not entir
 - **`states` / `states_meta`**: state changes (the classic recorder rows).
 - **`state_attributes`** (in older schemas) or JSON attributes stored with the state row (depending on your DB/version): needed because statistics often rely on the entity’s `state_class`, `device_class`, `unit_of_measurement`, etc.
 - **`statistics` itself**: Home Assistant can *continue* long-term statistics by using the **previous statistics row** as the starting point (especially important for “total increasing”/counter-like entities). So a new hour/day’s stats can depend on the prior period’s compiled stats, not only raw `states`.
-- **(Sometimes) `events`**: not for normal sensor statistics, but worth knowing that recorder has other data sources; some integrations rely on event history rather than state history for certain kinds of analytics. 
+- **(Sometimes) `events`**: not for normal sensor statistics, but worth knowing that recorder has other data sources; some integrations rely on event history rather than state history for certain kinds of analytics.
 
 > Statistics are computed from *recorded history*, which includes `states`, but may also require metadata/attributes and may chain from previously compiled statistics for continuity.
 
-#### 2.4.1 Computation for measurement statistics
+#### 2.4.1 Computation for Measurement Statistics
 
-TODO explain how min, max, and mean are computed for measurement and measurement_angle state_class
+For entities with `state_class: measurement` or `measurement_angle`, Home Assistant calculates **min**, **max**, and **mean** values during each statistics period.
 
-#### 2.4.2 Computation for counter statistics
+#### For `state_class: measurement` (Arithmetic Mean)
 
-TODO explain what are stored in state, sum, and last_reset for total and total_increasing state_class
+**Data Collection:**
 
+- Every 5 seconds (by default), the Recorder samples the current entity state
+- Only valid numeric states are considered (`unavailable` and `unknown` are excluded)
+- Non-numeric values and unit changes are skipped
 
+**Calculation Process (per 5-minute or 1-hour period):**
 
+1. **Mean (Arithmetic Average)**:
+   - Sum all valid numeric state values in the period
+   - Divide by the number of valid samples
+   - Formula: `mean = Σ(state_values) / n`
+   - Example: States [2040, 2030, 2023] → mean = (2040+2030+2023)/3 = 2031
+2. **Min (Minimum)**:
+   - The lowest valid numeric value observed during the period
+   - Example: States [2040, 2030, 2023] → min = 2023
+3. **Max (Maximum)**:
+   - The highest valid numeric value observed during the period
+   - Example: States [2040, 2030, 2023] → max = 2040
+4. **State**:
+   - The last valid numeric state value at the end of the period
+   - If the final state is `unavailable`, uses the last known good value
+   - Example: If last state at 13:04:58 is 2023 → state = 2023
 
+**Storage:** In `statistics_meta`: `mean_type=1` (arithmetic), `has_sum=0`
 
-TODO Update section number
+In `statistics`/`statistics_short_term`: `mean`, `min`, `max`, `state` are populated; `sum` and `last_reset_ts` are NULL
 
-### 2.4 The Statistics Tables
+#### For `state_class: measurement_angle` (Circular Mean)
+
+Angular measurements (like wind direction in degrees) require special handling because standard arithmetic averaging fails for angles. For example, the average of 350° and 10° should be 0° (North), not 180° (South).
+
+**Circular Mean Calculation:**
+
+1. Convert each angle θ to unit vectors:
+   - x = cos(θ)
+   - y = sin(θ)
+2. Calculate average vector components:
+   - mean_x = Σ(cos(θᵢ)) / n
+   - mean_y = Σ(sin(θᵢ)) / n
+3. Convert back to angle:
+   - mean = atan2(mean_y, mean_x)
+   - Convert from radians to degrees if needed
+4. **Mean Weight**:
+   - Stored as the length of the average vector: `sqrt(mean_x² + mean_y²)`
+   - Values close to 1 indicate consistent direction
+   - Values close to 0 indicate scattered directions
+
+**Min and Max:**
+
+- For angular measurements, min/max are still the literal minimum and maximum degree values observed
+- Note: These may be less meaningful for circular data
+
+**Storage:** In `statistics_meta`: `mean_type=2` (circular), `has_sum=0`
+
+In `statistics`/`statistics_short_term`: `mean`, `min`, `max`, `state`, and `mean_weight` are populated; `sum` and `last_reset_ts` are NULL
+
+### 2.4.2 Computation for Counter Statistics
+
+For entities with `state_class: total` or `total_increasing`, Home Assistant tracks cumulative values using **state**, **sum**, and **last_reset**.
+
+#### Understanding the Fields
+
+**`state`**: The absolute meter/counter reading at the end of the period
+
+- For energy meters: the total lifetime kWh reading
+- Example: 72201200.0 kWh (absolute meter value)
+
+**`sum`**: The cumulative growth/consumption since statistics began
+
+- Represents total consumption from the statistics "zero point"
+- When statistics first start, the initial state becomes the baseline
+- sum = current_state - initial_state (when statistics began)
+- Example: If initial state was 71905320 and current state is 72201200, then sum = 295880 kWh
+
+**`last_reset_ts`**: Timestamp when the counter was last reset (if applicable)
+
+- Read from the entity's `last_reset` attribute
+- NULL for lifetime counters that never reset
+- Updated when the `last_reset` attribute changes
+
+#### For `state_class: total_increasing` (Monotonically Increasing)
+
+**Characteristics:**
+
+- Counter only increases (or resets to zero/low value)
+- Examples: Energy consumption, water usage, production counters
+- Decreases are interpreted as meter resets or replacements
+
+**Calculation Process:**
+
+1. **State**: Last valid numeric value at end of period
+2. **Sum Calculation**:
+   - First statistics record: `sum = state - initial_state` (usually 0 or small value)
+   - Subsequent records: `sum = previous_sum + (current_state - previous_state)`
+   - If `current_state < (previous_state * 0.9)` (reset detected): treat as counter reset
+     - Continue sum calculation: `sum = previous_sum + current_state` (assuming reset to 0)
+   - Sum continuously accumulates, even across meter resets
+3. **Last Reset**: Usually NULL unless entity provides `last_reset` attribute
+
+Note that Home Assistant uses a **10% threshold** to detect resets rather than treating any small decrease as a reset to prevent false reset detection.
+
+**Example from Energy Meter presented in Part 1 (sensor.linky_east):**
+
+```text
+13:00: state=72199616, sum=294296 (previous_sum + delta since 12:55)
+13:05: state=72199768, sum=294448 (294296 + (72199768-72199616) = 294296 + 152)
+13:10: state=72199920, sum=294600 (294448 + (72199920-72199768) = 294448 + 152)
+...
+14:00: state=72201200, sum=295880 (accumulated growth)
+```
+
+#### For `state_class: total` (Can Increase or Decrease)
+
+**Characteristics:**
+
+- Counter can increase OR decrease
+- Examples: Net energy meter (with solar), battery charge level as counter
+- Uses `last_reset` attribute to track counter resets
+
+**Calculation Process:**
+
+1. **State**: Last valid numeric value at end of period
+2. **Sum Calculation**:
+   - If `last_reset` hasn't changed: `sum = previous_sum + (current_state - previous_state)`
+   - If `last_reset` changed: reset detected, restart accumulation
+     - New sum starts from current state value
+   - Can go up or down based on state changes
+3. **Last Reset**:
+   - Copied from entity's `last_reset` attribute
+   - When this changes, sum calculation restarts
+
+#### Special Case: Differential Sensors
+
+For sensors that update frequently with differential values (e.g., "energy consumed in the last minute"), configure with `state_class: total` and update `last_reset` with every state change. This tells HA to treat each state value as a new differential rather than a continuous counter.
+
+**Storage:** In `statistics_meta`: `mean_type=0` (none), `has_sum=1`
+
+In `statistics`/`statistics_short_term`: `state`, `sum`, and `last_reset_ts` are populated; `mean`, `min`, `max` are NULL
+
+### 2.4.3 Computing Delta/Growth from Statistics
+
+While the statistics tables store cumulative `sum` values, dashboards and graphs often need to display **consumption or growth during a specific period**. This delta is computed from the `sum` field.
+
+#### Formula
+
+##### Delta (consumption/growth) = sum_end - sum_start
+
+Where:
+
+- `sum_start` = sum value at the beginning of the desired period
+- `sum_end` = sum value at the end of the desired period
+
+#### Example: Hourly Energy Consumption
+
+Using the sensor.linky_east data from Example 3:
+
+```sql
+-- Get hourly consumption
+SELECT 
+  sm.statistic_id,
+  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
+  s.sum as cumulative_sum,
+  s.sum - LAG(s.sum) OVER (ORDER BY s.start_ts) as period_consumption
+FROM statistics s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.linky_east'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 12:00:00'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 15:00:00'
+ORDER BY s.start_ts;
+```
+
+Result:
+
+| statistic_id      | period_start    | cumulative_sum | period_consumption |
+| ----------------- | --------------- | -------------- | ------------------ |
+| sensor.linky_east | 1/27/2026 12:00 | 294136         |                    |
+| sensor.linky_east | 1/27/2026 13:00 | 295880         | 1744               |
+| sensor.linky_east | 1/27/2026 14:00 | 297544         | 1664               |
+
+**Interpretation:**
+
+- Between 12:00-13:00: consumed 1744 Wh (1.74 kWh)
+- Between 13:00-14:00: consumed 1664 Wh (1.6 kWh)
+
+#### Using last_reset for Multi-Day Calculations
+
+When calculating deltas across longer periods, check `last_reset_ts`:
+
+- **If last_reset unchanged**: Simple subtraction `sum_end - sum_start`
+- **If last_reset changed**: The counter was reset during the period
+  - For `total_increasing`: sum continues accumulating across resets (simple subtraction still works)
+  - For `total` with manual resets: May need special handling depending on use case
+
+#### How Statistics Graph Card Uses This
+
+The built-in statistics graph card:
+
+1. Queries the relevant statistics rows for the time range
+2. Calculates deltas: `consumption_in_period[i] = sum[i] - sum[i-1]`
+3. Displays as bar chart (for consumption) or line chart (for cumulative)
+
+This is why the `sum` field exists: to enable efficient delta calculations without reprocessing all raw states.
+
+### 2.5 The Statistics Tables
 
 In this document, we will focus on the `statistics_meta` and `statistics` tables. Note that the `statistics_short_term` table contains the same fields as the `statistics` table. The only difference is that the short-term table is updated every 5 minutes and automatically purged after 10 days.
 
-#### 2.4.1 statistics_meta Table
+#### 2.5.1 statistics_meta Table
 
 | Field                   | Description                                                  | Example                                                   |
 | ----------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
@@ -378,7 +574,7 @@ In this document, we will focus on the `statistics_meta` and `statistics` tables
 
 The other combinations are invalid.
 
-#### 2.4.2 statistics Table
+#### 2.5.2 statistics Table
 
 #### Statistics Used Fields
 
@@ -412,7 +608,7 @@ See [statistics fields documentation](statistics_fields_documentation.md) for a 
 
 **`mean_weight`**: A weight factor used when calculating circular mean values for angular measurements like wind direction, where standard arithmetic averaging would be incorrect
 
-### 2.5 Short and long term Statistics tracking
+### 2.6 Short and long term Statistics tracking
 
 We now look at what is stored in the statistics_short_term table and statistics table using the same practical examples used in Part 1
 
@@ -495,7 +691,8 @@ SELECT
   datetime(s.created_ts, 'unixepoch', 'localtime') as created_at,
   s.state,
   s.sum,
-  datetime(s.last_reset_ts, 'unixepoch', 'localtime') as last_reset
+  datetime(s.last_reset_ts, 'unixepoch', 'localtime') as last_reset,
+  s.sum - LAG(s.sum) OVER (ORDER BY s.start_ts) as period_consumption
 FROM statistics_short_term s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
 WHERE sm.statistic_id = 'sensor.linky_east'
@@ -506,26 +703,28 @@ ORDER BY s.start_ts ASC;
 
 ##### Counter Short Term Statistics
 
-| statistic_id      | period_start        | created_at          |  state     | sum      | last_reset |
-| ----------------- | ------------------- | ------------------- | -----------| -------- | ---------- |
-| sensor.linky_east | 2026-01-27 13:00:00 | 2026-01-27 13:05:10 | 72199616.0 | 294296.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:05:00 | 2026-01-27 13:10:10 | 72199768.0 | 294448.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:10:00 | 2026-01-27 13:15:10 | 72199920.0 | 294600.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:15:00 | 2026-01-27 13:20:10 | 72200064.0 | 294744.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:20:00 | 2026-01-27 13:25:10 | 72200208.0 | 294888.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:25:00 | 2026-01-27 13:30:10 | 72200352.0 | 295032.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:30:00 | 2026-01-27 13:35:10 | 72200488.0 | 295168.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:35:00 | 2026-01-27 13:40:10 | 72200624.0 | 295304.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:40:00 | 2026-01-27 13:45:10 | 72200768.0 | 295448.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:45:00 | 2026-01-27 13:50:10 | 72200920.0 | 295600.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:50:00 | 2026-01-27 13:55:10 | 72201056.0 | 295736.0 | `NULL`     |
-| sensor.linky_east | 2026-01-27 13:55:00 | 2026-01-27 14:00:10 | 72201200.0 | 295880.0 | `NULL`     |
+| statistic_id      | period_start    | created_at      | state    | sum    | last_reset | period_consumption |
+| ----------------- | --------------- | --------------- | -------- | ------ | ---------- | ------------------ |
+| sensor.linky_east | 1/27/2026 13:00 | 1/27/2026 13:05 | 72199616 | 294296 |            |                    |
+| sensor.linky_east | 1/27/2026 13:05 | 1/27/2026 13:10 | 72199768 | 294448 |            | 152                |
+| sensor.linky_east | 1/27/2026 13:10 | 1/27/2026 13:15 | 72199920 | 294600 |            | 152                |
+| sensor.linky_east | 1/27/2026 13:15 | 1/27/2026 13:20 | 72200064 | 294744 |            | 144                |
+| sensor.linky_east | 1/27/2026 13:20 | 1/27/2026 13:25 | 72200208 | 294888 |            | 144                |
+| sensor.linky_east | 1/27/2026 13:25 | 1/27/2026 13:30 | 72200352 | 295032 |            | 144                |
+| sensor.linky_east | 1/27/2026 13:30 | 1/27/2026 13:35 | 72200488 | 295168 |            | 136                |
+| sensor.linky_east | 1/27/2026 13:35 | 1/27/2026 13:40 | 72200624 | 295304 |            | 136                |
+| sensor.linky_east | 1/27/2026 13:40 | 1/27/2026 13:45 | 72200768 | 295448 |            | 144                |
+| sensor.linky_east | 1/27/2026 13:45 | 1/27/2026 13:50 | 72200920 | 295600 |            | 152                |
+| sensor.linky_east | 1/27/2026 13:50 | 1/27/2026 13:55 | 72201056 | 295736 |            | 136                |
+| sensor.linky_east | 1/27/2026 13:55 | 1/27/2026 14:00 | 72201200 | 295880 |            | 144                |
 
 ##### Counter Long Term Statistics
 
-| statistic_id      | period_start        | created_at          | state      | sum      | last_reset |
-| ----------------- | ------------------- | ------------------- | ---------- | -------- | ---------- |
-| sensor.linky_east | 2026-01-27 13:00:00 | 2026-01-27 14:00:10 | 72201200.0 | 295880.0 | `NULL`     |
+| statistic_id      | period_start    | created_at      | state    | sum    | last_reset | period_consumption |
+| ----------------- | --------------- | --------------- | -------- | ------ | ---------- | ------------------ |
+| sensor.linky_east | 1/27/2026 12:00 | 1/27/2026 13:00 | 72199456 | 294136 |            |                    |
+| sensor.linky_east | 1/27/2026 13:00 | 1/27/2026 14:00 | 72201200 | 295880 |            | 1744               |
+| sensor.linky_east | 1/27/2026 14:00 | 1/27/2026 15:00 | 72202864 | 297544 |            | 1664               |
 
 ---
 
