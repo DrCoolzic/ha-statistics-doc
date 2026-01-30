@@ -318,6 +318,31 @@ Home Assistant provides support to process statistics through the following work
 - **Missing data handling**: Gaps in state data create gaps in statistics. `unavailable` and `unknown` states are not included in calculations
 - **Unit changes**: Changing `unit_of_measurement` breaks statistics continuity and creates a new statistic_id
 
+### 2. 4 Statistics Computation Process
+
+It worth noting that the `statistics/statistics_short_term` tables are not entirely built from `states`. In practice, the statistics compiler pulls data from multiple recorder sources depending on what exists for the entity and the period being compiled:
+
+- **`states` / `states_meta`**: state changes (the classic recorder rows).
+- **`state_attributes`** (in older schemas) or JSON attributes stored with the state row (depending on your DB/version): needed because statistics often rely on the entity’s `state_class`, `device_class`, `unit_of_measurement`, etc.
+- **`statistics` itself**: Home Assistant can *continue* long-term statistics by using the **previous statistics row** as the starting point (especially important for “total increasing”/counter-like entities). So a new hour/day’s stats can depend on the prior period’s compiled stats, not only raw `states`.
+- **(Sometimes) `events`**: not for normal sensor statistics, but worth knowing that recorder has other data sources; some integrations rely on event history rather than state history for certain kinds of analytics. 
+
+> Statistics are computed from *recorded history*, which includes `states`, but may also require metadata/attributes and may chain from previously compiled statistics for continuity.
+
+#### 2.4.1 Computation for measurement statistics
+
+TODO explain how min, max, and mean are computed for measurement and measurement_angle state_class
+
+#### 2.4.2 Computation for counter statistics
+
+TODO explain what are stored in state, sum, and last_reset for total and total_increasing state_class
+
+
+
+
+
+TODO Update section number
+
 ### 2.4 The Statistics Tables
 
 In this document, we will focus on the `statistics_meta` and `statistics` tables. Note that the `statistics_short_term` table contains the same fields as the `statistics` table. The only difference is that the short-term table is updated every 5 minutes and automatically purged after 10 days.
