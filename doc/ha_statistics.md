@@ -1,5 +1,5 @@
 # Understanding and Using Home Assistant Statistics
-
+<!-- markdownlint-disable MD001 MD060 -->
 **Version:** 2.0 (Enhanced with Navigation)
 **Last Updated:** January 30, 2026
 
@@ -46,7 +46,6 @@
 ### State Class Selection Guide
 
 Use this table to quickly determine which `state_class` to use for your entity:
-
 
 | **I want to track...**               | **Use state_class**                     | **Tracks**              | **Example**               | **Graph Shows**              |
 | -------------------------------------- | ----------------------------------------- | ------------------------- | --------------------------- | ------------------------------ |
@@ -108,7 +107,6 @@ Use this table to quickly determine which `state_class` to use for your entity:
 
 **Common Issues & Solutions:**
 
-
 | **Issue**                     | **Cause**                      | **Solution**                                        |
 | ------------------------------- | -------------------------------- | ----------------------------------------------------- |
 | No statistics at all          | Missing`state_class`           | Add`state_class: measurement` or `total_increasing` |
@@ -121,96 +119,73 @@ Use this table to quickly determine which `state_class` to use for your entity:
 
 ### Data Flow Diagram
 
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         Home Assistant Core                              │
-│  ┌────────────┐         ┌─────────────┐           ┌──────────────┐       │
-│  │ Integration│ ──────> │ Entity State│ ────────> │  Event Bus   │       │
-│  │   (e.g.    │ updates │   Object    │ creates   │(state_changed│       │
-│  │   Zigbee)  │         │             │ event     │    events)   │       │
-│  └────────────┘         └─────────────┘           └──────┬───────┘       │
-│                                                          │               │
-└──────────────────────────────────────────────────────────┼───────────────┘
-                                                           │
-                                         Subscribes to events
-                                                           │
-                                                           ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Recorder Integration                            │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │  Sampling (every 5 seconds by default)                           │   │
-│  │  • Reads entity states                                           │   │
-│  │  • Commits changed values to database                            │   │
-│  └─────────────────────────────┬────────────────────────────────────┘   │
-│                                │                                        │
-│                                ▼                                        │
-│  ┌────────────────────────────────────────────────────────────────┐     │
-│  │                      Database Tables                           │     │
-│  │   ┌──────────────┐    ┌─────────────┐    ┌────────────────┐    │     │
-│  │   │ states_meta  │◄───┤   states    │───>│state_attributes│    │     │
-│  │   │              │    │             │    │                │    │     │
-│  │   │ • entity_id  │    │ • state     │    │ • attributes   │    │     │
-│  │   │   mapping    │    │ • timestamps│    │   (JSON)       │    │     │
-│  │   └──────────────┘    └─────────────┘    └────────────────┘    │     │
-│  └────────────────────────────────────────────────────────────────┘     │
-│                                 │                                       │
-└─────────────────────────────────┼───────────────────────────────────────┘
-                                  │
-                    Every 5 minutes (short-term)
-                    Every 60 minutes (long-term)
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    Statistics Compiler                                  │
-│   ┌─────────────────────────────────────────────────────────────────┐   │
-│   │  Processing Logic:                                              │   │
-│   │  1. Filter entities with state_class                            │   │
-│   │  2. Retrieve states from period                                 │   │
-│   │  3. Apply computation algorithm:                                │   │
-│   │     • measurement → calculate mean, min, max                    │   │
-│   │     • measurement_angle → circular mean + weight                │   │
-│   │     • total/total_increasing → calculate sum, track resets      │   │
-│   │  4. Write to statistics tables                                  │   │
-│   └─────────────────────────────┬───────────────────────────────────┘   │
-│                                 │                                       │
-└─────────────────────────────────┼───────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      Statistics Tables                                  │
-│   ┌────────────────────────────────────────────────────────────────┐    │
-│   │  statistics_meta                                               │    │
-│   │  • statistic_id (e.g., "sensor.energy_meter")                  │    │
-│   │  • mean_type (0=none, 1=arithmetic, 2=circular)                │    │
-│   │  • has_sum (0 or 1)                                            │    │
-│   └─────────────────────────────┬──────────────────────────────────┘    │
-│                                 │                                       │
-│   ┌─────────────────────────────┼──────────────────────────────────┐    │
-│   │  statistics_short_term      │      statistics (long-term)      │    │
-│   │  • Every 5 minutes          │      • Every 60 minutes          │    │
-│   │  • Kept 10 days             │      • Kept indefinitely         │    │
-│   │                             │                                  │    │
-│   │  For measurement:           │      Aggregated from             │    │
-│   │  • mean, min, max, state    │      short-term stats            │    │
-│   │                             │                                  │    │
-│   │  For total:                 │      Same fields,                │    │
-│   │  • state, sum, last_reset   │      longer periods              │    │
-│   └─────────────────────────────┴──────────────────────────────────┘    │
-│                                 │                                       │
-└─────────────────────────────────┼───────────────────────────────────────┘
-                                  │
-                        Used by dashboards,
-                        graphs, and queries
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    Frontend / User Interface                            │
-│  • Energy Dashboard                                                     │
-│  • Statistics Graph Card                                                │
-│  • History Panel (auto-uses stats for long ranges)                      │
-│  • Custom queries and integrations                                      │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph HA["Home Assistant Core"]
+        Integration["Integration<br/>(e.g. Zigbee)"]
+        EntityState["Entity State<br/>Object"]
+        EventBus["Event Bus<br/>(state_changed events)"]
+        
+        Integration -->|updates| EntityState
+        EntityState -->|creates event| EventBus
+    end
+    
+    EventBus -->|Subscribes to events| RecorderIntegration
+    
+    subgraph Recorder["Recorder Integration"]
+        Sampling["Sampling (every 5 seconds by default)<br/>• Reads entity states<br/>• Commits changed values to database"]
+        
+        subgraph DBTables["Database Tables"]
+            StatesMeta["states_meta<br/>• entity_id mapping"]
+            States["states<br/>• state<br/>• timestamps"]
+            StateAttributes["state_attributes<br/>• attributes (JSON)"]
+            
+            StatesMeta -.->|references| States
+            States -.->|references| StateAttributes
+        end
+        
+        Sampling --> DBTables
+    end
+    
+    DBTables -->|"Every 5 minutes (short-term)<br/>Every 60 minutes (long-term)"| StatsCompiler
+    
+    subgraph StatsCompiler["Statistics Compiler"]
+        Processing["Processing Logic:<br/>1. Filter entities with state_class<br/>2. Retrieve states from period<br/>3. Apply computation algorithm:<br/>   • measurement → calculate mean, min, max<br/>   • measurement_angle → circular mean + weight<br/>   • total/total_increasing → calculate sum, track resets<br/>4. Write to statistics tables"]
+    end
+    
+    StatsCompiler --> StatsTables
+    
+    subgraph StatsTables["Statistics Tables"]
+        StatsMeta["statistics_meta<br/>• statistic_id<br/>• mean_type (0=none, 1=arithmetic, 2=circular)<br/>• has_sum (0 or 1)"]
+        
+        subgraph StatsStorage["Statistics Storage"]
+            ShortTerm["statistics_short_term<br/>• Every 5 minutes<br/>• Kept 10 days<br/><br/>For measurement:<br/>• mean, min, max, state<br/><br/>For total:<br/>• state, sum, last_reset"]
+            LongTerm["statistics (long-term)<br/>• Every 60 minutes<br/>• Kept indefinitely<br/><br/>Aggregated from<br/>short-term stats<br/><br/>Same fields,<br/>longer periods"]
+        end
+        
+        StatsMeta -.-> StatsStorage
+    end
+    
+    StatsTables -->|"Used by dashboards,<br/>graphs, and queries"| Frontend
+    
+    subgraph Frontend["Frontend / User Interface"]
+        UI["• Energy Dashboard<br/>• Statistics Graph Card<br/>• History Panel (auto-uses stats for long ranges)<br/>• Custom queries and integrations"]
+    end
+    
+    classDef coreBox fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    classDef recorderBox fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef compilerBox fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef statsBox fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef frontendBox fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    
+    class HA coreBox
+    class Recorder recorderBox
+    class StatsCompiler compilerBox
+    class StatsTables statsBox
+    class Frontend frontendBox
+```
 
+```text
 Time Flow Example (Energy Meter):
 ────────────────────────────────────────────────────────────────────────────
 13:00:00  State: 72199488 ──┐
@@ -325,7 +300,6 @@ The Recorder Integration writes to numerous tables in the database, but in the c
 
 #### Used Fields
 
-
 | Field                   | Type         | Description                                                                           |
 | ------------------------- | -------------- | --------------------------------------------------------------------------------------- |
 | `state_id`              | INTEGER      | Primary key, auto-incrementing unique identifier for each state record                |
@@ -375,7 +349,6 @@ ORDER BY s.last_updated_ts;
 
 Results
 
-
 | entity_id           | state | last_updated    | last_changed    | last_reported   |
 | --------------------- | ------- | ----------------- | ----------------- | ----------------- |
 | sensor.linky_sinsts | 2040  | 1/27/2026 13:00 | 1/27/2026 13:00 | 1/27/2026 13:00 |
@@ -389,7 +362,6 @@ Here we can see that we have a new state entry every minute.
 
 In contrast, a ZigBee temperature sensor reports values at intervals determined by the device itself, which may be irregular:
 
-
 | entity_id                 | state | last_updated  | last_changed  | last_reported |
 | --------------------------- | ------- | --------------- | --------------- | --------------- |
 | sensor.family_temperature | 13.59 | 1/27/26 12:00 | 1/27/26 12:00 | 1/27/26 12:00 |
@@ -400,7 +372,6 @@ In contrast, a ZigBee temperature sensor reports values at intervals determined 
 ##### Example 3: Energy Meter (Total/Counter Type)
 
 The two entities presented above belong to the **measurement** category, where state values fluctuate up and down based on current conditions. We also have entities that belong to the **total** category (e.g., energy consumption) where the state values are monotonically increasing:
-
 
 | entity_id         | state    | last_updated    | last_changed    | last_reported   |
 | ------------------- | ---------- | ----------------- | ----------------- | ----------------- |
@@ -423,7 +394,6 @@ Home Assistant supports statistics, which are **aggregated and compressed repres
 This dramatically reduces storage requirements while preserving trend data.
 
 #### Short-term vs Long-term Statistics
-
 
 | Aspect         | Short-term Statistics    | Long-term Statistics               |
 | ---------------- | -------------------------- | ------------------------------------ |
@@ -694,7 +664,6 @@ ORDER BY s.start_ts;
 
 Result:
 
-
 | statistic_id      | period_start    | cumulative_sum | period_consumption |
 | ------------------- | ----------------- | ---------------- | -------------------- |
 | sensor.linky_east | 1/27/2026 12:00 | 294136         | NULL               |
@@ -720,7 +689,6 @@ This is why the `sum` field exists: to enable efficient delta calculations witho
 
 #### 2.5.1 statistics_meta Table
 
-
 | Field                 | Description                                            | Example                                                   |
 | ----------------------- | -------------------------------------------------------- | ----------------------------------------------------------- |
 | `id`                  | Primary key, unique ID for each statistic              | 1, 2, 3...                                                |
@@ -733,7 +701,6 @@ This is why the `sum` field exists: to enable efficient delta calculations witho
 
 ##### Understanding mean_type
 
-
 | mean_type  | Value | Meaning                  | Use Case                         |
 | ------------ | ------- | -------------------------- | ---------------------------------- |
 | None       | 0     | No mean calculated       | Counters, totals (energy meters) |
@@ -741,7 +708,6 @@ This is why the `sum` field exists: to enable efficient delta calculations witho
 | Circular   | 2     | Circular/angular mean    | Wind direction, compass bearings |
 
 ##### Mean_type / Has_sum Combination Table
-
 
 | mean_type | has_sum | Type                   | Columns Available     | Example              |
 | ----------- | --------- | ------------------------ | ----------------------- | ---------------------- |
@@ -752,7 +718,6 @@ This is why the `sum` field exists: to enable efficient delta calculations witho
 #### 2.5.2 statistics Table
 
 ##### Statistics Used Fields
-
 
 | Field           | Description                                                     | Example                             |
 | ----------------- | ----------------------------------------------------------------- | ------------------------------------- |
@@ -779,7 +744,6 @@ We now look at what is stored in the statistics_short_term table and statistics 
 
 ##### Short Term Statistics
 
-
 | statistic_id        | period_start    | created_at      | mean        | min  | max  |
 | --------------------- | ----------------- | ----------------- | ------------- | ------ | ------ |
 | sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 13:05 | 2026.510631 | 1987 | 2040 |
@@ -789,7 +753,6 @@ We now look at what is stored in the statistics_short_term table and statistics 
 
 ##### Long Term Statistics
 
-
 | statistic_id        | period_start    | created_at      | mean        | min  | max  |
 | --------------------- | ----------------- | ----------------- | ------------- | ------ | ------ |
 | sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 14:00 | 1872.448359 | 1704 | 2040 |
@@ -797,7 +760,6 @@ We now look at what is stored in the statistics_short_term table and statistics 
 #### Example 2: Energy Meter (Total/Counter Type) Statistics
 
 ##### Counter Short Term Statistics
-
 
 | statistic_id      | period_start    | created_at      | state    | sum    | period_consumption |
 | ------------------- | ----------------- | ----------------- | ---------- | -------- | -------------------- |
@@ -807,7 +769,6 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | ...               | ...             | ...             | ...      | ...    | ...                |
 
 ##### Counter Long Term Statistics
-
 
 | statistic_id      | period_start    | created_at      | state    | sum    | period_consumption |
 | ------------------- | ----------------- | ----------------- | ---------- | -------- | -------------------- |
@@ -967,4 +928,3 @@ Statistics in Home Assistant provide an efficient way to store and analyze long-
 - [Taming my Home Assistant database growth - Koskila.net](https://www.koskila.net/taming-my-home-assistant-database-growth/)
 - [Loading, Manipulating, Recovering and Moving Long Term Statistics](https://community.home-assistant.io/t/loading-manipulating-recovering-and-moving-long-term-statistics-in-home-assistant/953802)
 - [Mastering Home Assistant's Recorder and History](https://newerest.space/mastering-home-assistant-recorder-history-optimization/)
-
