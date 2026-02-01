@@ -1,7 +1,5 @@
 # SQL Tips
 
-short SQL useful chitsheat
-
 - [SQL Tips](#sql-tips)
   - [SQLite MySQL Dialect Differences](#sqlite-mysql-dialect-differences)
     - [Conditional logic (CASE) - mostly the same](#conditional-logic-case---mostly-the-same)
@@ -18,27 +16,12 @@ short SQL useful chitsheat
     - [Find all entities containing "temperature"](#find-all-entities-containing-temperature)
     - [Common pattern matching wildcards](#common-pattern-matching-wildcards)
     - [**Pattern Matching Examples**](#pattern-matching-examples)
-      - [Entities that START with "sensor.temperature"](#entities-that-start-with-sensortemperature)
-      - [Entities that END with "temperature"](#entities-that-end-with-temperature)
-      - [Entities containing "temp" OR "temperature"](#entities-containing-temp-or-temperature)
-      - [Case-insensitive matching (SQLite default behavior)](#case-insensitive-matching-sqlite-default-behavior)
-      - [Match exact pattern with underscore (single character wildcard)](#match-exact-pattern-with-underscore-single-character-wildcard)
   - [Usage of  SQL View](#usage-of--sql-view)
     - [Think of It Like a Shortcut](#think-of-it-like-a-shortcut)
-      - [Without a View (Long Query Every Time)](#without-a-view-long-query-every-time)
-      - [With a View (Simple Query)](#with-a-view-simple-query)
     - [Key Characteristics of Views](#key-characteristics-of-views)
     - [Real-World Analogy](#real-world-analogy)
     - [When to Use Views](#when-to-use-views)
-      - [✅ Good Use Cases](#-good-use-cases)
-      - [❌ When NOT to Use Views](#-when-not-to-use-views)
     - [View Operations](#view-operations)
-      - [Create a View](#create-a-view)
-      - [Query a View](#query-a-view)
-      - [See All Views](#see-all-views)
-      - [See View Definition](#see-view-definition)
-      - [Drop a View](#drop-a-view)
-      - [Replace a View](#replace-a-view)
     - [Example: Home Assistant Use Case](#example-home-assistant-use-case)
     - [Summary](#summary)
 
