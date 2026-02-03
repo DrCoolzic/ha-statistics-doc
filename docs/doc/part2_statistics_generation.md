@@ -446,7 +446,7 @@ We only show the fields that are in use at the time of this writing. Other field
 | `sum`           | Cumulative sum (for counters like energy)                       | 1523.4 (total kWh)                  |
 ||||
 
-See [statistics fields documentation](statistics_fields_documentation.md) for a detailed description of fields `mean_weight`, and `created_ts`
+See [statistics fields documentation](stat_fields.md) for a detailed description of fields `mean_weight`, and `created_ts`
 
 ### 2.7 Short and long term Statistics tracking examples
 

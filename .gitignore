@@ -1,0 +1,12 @@
+# MkDocs build output
+site/
+
+# MkDocs / Python caches
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# MkDocs plugin/theme caches (common)
+.cache/

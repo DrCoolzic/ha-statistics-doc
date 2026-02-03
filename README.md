@@ -5,6 +5,4 @@ TODO
 
 ## Quick Links
 
-- [Main Document](./doc/ha_statistics) | [SQL Queries](./sql/sql.md)
-
-
+- [Main Document](./docs/doc/ha_statistics.md) | [SQL Queries](./docs/sql/)
