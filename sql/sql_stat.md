@@ -17,6 +17,7 @@
     - [List ONLY External Statistics](#list-only-external-statistics)
     - [Comprehensive Summary with All Details](#comprehensive-summary-with-all-details)
     - [Find Entities That Might Be Renamed](#find-entities-that-might-be-renamed)
+    - [Export statistics inventory](#export-statistics-inventory)
 
 ## Retrieve measurement statistics between specific dates
 
@@ -290,4 +291,32 @@ AND sm_stats.statistic_id LIKE '%.%'
 AND sm_stats.statistic_id != sm_states.entity_id
 GROUP BY sm_stats.statistic_id, sm_states.entity_id
 ORDER BY sm_stats.statistic_id;
+```
+
+### Export statistics inventory
+
+```sql
+SELECT 
+    sm_stats.statistic_id,
+    sm_stats.unit_of_measurement,
+    sm_stats.source,
+    CASE 
+        WHEN sm_states.entity_id IS NOT NULL THEN 'Internal'
+        WHEN sm_stats.statistic_id LIKE '%:%' THEN 'External'
+        WHEN sm_stats.statistic_id LIKE '%.%' THEN 'Deleted'
+        ELSE 'Other'
+    END as category,
+    CASE sm_stats.has_sum 
+        WHEN 1 THEN 'Counter' 
+        ELSE 'Measurement' 
+    END as type,
+    COUNT(s.id) as sample_count,
+    datetime(MIN(s.start_ts), 'unixepoch', 'localtime') as first_seen,
+    datetime(MAX(s.start_ts), 'unixepoch', 'localtime') as last_seen,
+    ROUND(JULIANDAY(MAX(s.start_ts), 'unixepoch') - JULIANDAY(MIN(s.start_ts), 'unixepoch'), 1) as days_span
+FROM statistics_meta sm_stats
+LEFT JOIN states_meta sm_states ON sm_stats.statistic_id = sm_states.entity_id
+LEFT JOIN statistics s ON sm_stats.id = s.metadata_id
+GROUP BY sm_stats.statistic_id, sm_stats.source, sm_stats.unit_of_measurement, sm_stats.has_sum, sm_states.entity_id
+ORDER BY category, sm_stats.statistic_id;
 ```
