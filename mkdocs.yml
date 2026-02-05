@@ -17,7 +17,7 @@ nav:
       - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
   - SQL Examples:
-      - Overview: sql/sql.md
+      - Overview: sql/sql_overview.md
       - Statistics: sql/sql_stat.md
       - States: sql/sql_states.md
       - Tips: sql/sql_tips.md

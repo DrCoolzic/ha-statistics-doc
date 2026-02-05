@@ -27,8 +27,8 @@ hide:
   </div>
   <div>
     <h2>Documentation structure</h2>
-    <p><a href="doc/overview.md">Statistics Documentation</a>: Start here to understand the big picture.</p>
-    <p><a href="sql/sql_stat.md">SQL Examples</a>: Practical queries for statistics and states.</p>
+    <p><a href="doc/overview">Statistics Documentation</a>: Start here to understand the big picture.</p>
+    <p><a href="sql/sql_overview">SQL Examples</a>: Practical queries for statistics and states.</p>
   </div>
 </div>
 
