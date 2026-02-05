@@ -31,10 +31,3 @@ hide:
     <p><a href="sql/sql_overview">SQL Examples</a>: Practical queries for statistics and states.</p>
   </div>
 </div>
-
-## Start here
-
-- [Overview](doc/overview.md)
-
-
-

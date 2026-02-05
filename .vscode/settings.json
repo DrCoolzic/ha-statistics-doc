@@ -1,10 +1,19 @@
 {
     "cSpell.words": [
+        "elif",
+        "Koskila",
         "localtime",
+        "postgresql",
+        "pymysql",
+        "Pythonic",
+        "sessionmaker",
         "setpoints",
         "sinsts",
         "SMALLINT",
+        "sqlalchemy",
+        "tablename",
         "unixepoch",
+        "UNIXTIME",
         "urms",
         "VARCHAR"
     ]

@@ -14,7 +14,7 @@ This dramatically reduces storage requirements while preserving trend data.
 | Aspect         | Short-term Statistics    | Long-term Statistics               |
 | ---------------- | -------------------------- | ------------------------------------ |
 | **Interval**   | 5 minutes                | 1 hour                             |
-| **Retention**  | 10 days (auto-purged configurable) | Indefinite |
+| **Retention**  | 10 days (auto-purged, configurable via `auto_purge`) | Indefinite (unless manually purged) |
 | **Table**      | `statistics_short_term`  | `statistics`                       |
 | **Purpose**    | Recent detailed trends   | Historical trend analysis          |
 | **Generation** | Direct from states table | Aggregated from short-term stats   |
@@ -34,8 +34,10 @@ They represent a **measurement**
 **Requirements:**
 
 - `state_class` property must be set to `measurement` or `measurement_angle`
-- The `device_class` must *not* be either of `date`, `enum`, `energy`, `gas`, `monetary`, `timestamp`, `volume` or `water`
+- The `device_class` must *not* be a non-numeric type such as `date`, `enum`, `timestamp`, or certain special-purpose classes like `energy`, `gas`, `monetary`, `volume`, or `water` that have specific handling requirements.
 - Must have a `unit_of_measurement` defined
+
+> **Note:** See the [official sensor device classes](https://www.home-assistant.io/integrations/sensor/#device-class) for the current complete list.
 
 **What is tracked:**
 Home Assistant tracks the **min**, **max**, and **mean** values during each statistics period, updating them every 5 minutes.
@@ -111,6 +113,8 @@ Home Assistant provides support to process statistics through the following work
 - **No retroactive generation**: Statistics are only generated going forward from when `state_class` is first set
 - **Historical states are not converted**: States recorded before `state_class` was added will not be converted to statistics
 - **Missing data handling**: Gaps in state data create gaps in statistics
+- **State class changes**: If you change an entity's `state_class`, a new `statistic_id` may be created, resulting in discontinuous statistics. Plan state class assignments carefully.
+- **Unit changes**: Changing `unit_of_measurement` creates a new statistic series. Convert at the source if possible.
 
 ## 2.4 Statistics Computation
 
@@ -180,10 +184,11 @@ Angular measurements (like wind direction in degrees) require special handling b
 
    - mean = atan2(mean_y, mean_x)
 4. **Mean Weight**:
-
    - Stored as the length of the average vector: `sqrt(mean_x² + mean_y²)`
-   - Values close to 1 indicate consistent direction
-   - Values close to 0 indicate scattered directions
+   - Range: 0 to 1
+   - Values close to 1 indicate consistent direction (e.g., steady north wind)
+   - Values close to 0 indicate scattered/variable directions (e.g., swirling wind)
+   - This helps distinguish between "average direction is 0°" (all measurements near 0°) vs "average direction is 0°" (equal mix of 350° and 10°)
 
 ### Counter type
 
@@ -223,7 +228,7 @@ For entities with `state_class: total_increasing` (Monotonically Increasing)
 
    - First statistics record: `sum = state - initial_state` (usually 0 or small value)
    - Subsequent records: `sum = previous_sum + (current_state - previous_state)`
-   - If `current_state < (previous_state * 0.9)` (reset detected): treat as counter reset
+   - If `current_state < (previous_state * 0.9)` (10% or more decrease detected): treat as counter reset
      - Continue sum calculation: `sum = previous_sum + current_state` (assuming reset to 0)
    - Sum continuously accumulates, even across meter resets
 3. **Last Reset**: Usually NULL unless entity provides `last_reset` attribute
@@ -384,6 +389,8 @@ flowchart TB
     class Frontend frontendBox
 ```
 
+**Note:** This diagram shows the primary data flow. Some integrations may provide statistics directly without going through the states table (external statistics).
+
 **Time Flow Example (Energy Meter)**
 
 ```text
@@ -444,7 +451,7 @@ After 12 such 5-minute periods:
 | 1         | 0       | Arithmetic measurement | mean, min, max, state | Temperature, voltage |
 | 2         | 0       | Circular measurement   | mean, min, max, state | Wind direction       |
 
-Any other combination is invalid
+**Note:** Any combination not listed above (e.g., `mean_type=1` with `has_sum=1`) is invalid and indicates a data integrity issue.
 
 ### statistics table
 
@@ -491,6 +498,15 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | --------------------- | ----------------- | ----------------- | ------------- | ------ | ------ |
 | sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 14:00 | 1872.448359 | 1704 | 2040 |
 
+### ZigBee Temperature Sensor
+
+**Measurement Short Term Statistics**
+
+| statistic_id | period_start | created_at | mean | min | max |
+|--------------|--------------|------------|------|-----|-----|
+| sensor.family_temperature | 1/27/2026 12:00 | 1/27/2026 12:05 | 13.61 | 13.59 | 13.63 |
+| sensor.family_temperature | 1/27/2026 12:35 | 1/27/2026 12:40 | 13.60 | 13.60 | 13.60 |
+
 ### Energy Meter
 
 **Counter Short Term Statistics**
@@ -509,3 +525,6 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | sensor.linky_east | 1/27/2026 12:00 | 1/27/2026 13:00 | 72199456 | 294136 | -                  |
 | sensor.linky_east | 1/27/2026 13:00 | 1/27/2026 14:00 | 72201200 | 295880 | 1744               |
 | sensor.linky_east | 1/27/2026 14:00 | 1/27/2026 15:00 | 72202864 | 297544 | 1664               |
+
+**Previous** - [Part 1: Fundamental Concepts](part1_fundamental_concepts.md)
+**Next** - [Part 3: Working with Statistics](part3_working_with_statistics.md)

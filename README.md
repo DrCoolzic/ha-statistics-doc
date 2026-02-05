@@ -2,8 +2,7 @@
 
 TODO
 
-Published documentation: https://drcoolzic.github.io/ha-statistics-doc/
-
+Published documentation: <https://drcoolzic.github.io/ha-statistics-doc/>
 
 ## Quick Links
 

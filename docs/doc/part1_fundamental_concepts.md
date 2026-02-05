@@ -47,7 +47,7 @@ The Recorder integration stores historical data about your system in a database,
 
 - Objects are **sampled every 5 seconds** by default (configurable)
 - Values are **committed to the database only if they are valid and if they have changed**
-- This 5-second interval is a balance between responsiveness and storage efficiency. According to the Nyquist-Shannon sampling theorem, a 5-second sampling rate means no events are lost if they occur at intervals of **10 seconds or longer**. This covers the vast majority of entity updates while preventing database saturation during event bursts.
+- This 5-second interval balances responsiveness with storage efficiency. According to the Nyquist-Shannon sampling theorem, a 5-second sampling rate can accurately capture changes that occur at intervals of 10 seconds or longer. For faster-changing values, intermediate states may not be captured, though the system will still record the value present at each 5-second sample.
 
 ### Database Backend
 
@@ -63,8 +63,6 @@ The Recorder integration stores historical data about your system in a database,
 The Recorder Integration writes to numerous tables in the database, but in the context of this document, the table we are interested in is the `states` table that is the primary storage location for entity state history. Understanding its structure is essential for working with raw data and statistics.
 
 ### Table Schema
-
-### Used Fields
 
 We only show the fields that are in use at the time of this writing. Other fields in the table are deprecated and should be ignored.
 
@@ -85,19 +83,21 @@ We only show the fields that are in use at the time of this writing. Other field
 
 ### Important Distinctions
 
-- **`last_updated_ts`**: Changes when state OR attributes change
-- **`last_changed_ts`**: Changes only when the state value itself changes. The `last_changed_ts` field is stored as NULL when it equals `last_updated_ts` to save database space
-- **`last_reported_ts`**: The timestamp from the integration/device
+- **`last_updated_ts`**: Unix timestamp  when state OR attributes change
+- **`last_changed_ts`**: Unix timestamp when the actual state **value changed** (stored as NULL when it equals `last_updated_ts` to save database space) space
+- **`last_reported_ts`**: Unix timestamp from the integration/device
 
 ---
 
-## 1.4 Monitoring Statistical Data
+## 1.4 Entities That Generate Statistics
 
 The `states` table tracks **all** entities, but in this document we focus specifically on "**statistics**" entities - those that generate **long-term statistics**.
 These entities belong to two main categories (we'll explore these in detail in [Part 2](part2_statistics_generation.md#22-which-entities-generate-statistics)):
 
 - the **measurement** type
 - the **total/counter** type .
+
+> **Note on Data Retention:** While statistics are retained long-term, the detailed state history in the `states` table is typically purged after a configurable period (default: 10 days). This is why statistics are essential for long-term trend analysis.
 
 Let's examine how state tracking works with practical examples.
 
@@ -151,4 +151,5 @@ The two entities presented above generates statistics that belong to the **measu
 | sensor.linky_east | 72199520 | 1/27/2026 13:01 | 1/27/2026 13:01 | 1/27/2026 13:01 |
 | ...               | ...      | ...             | ...             | ...             |
 
+**Previous** - [Overview](overview.md)
 **Next** - [Part 2: Statistics Generation](part2_statistics_generation.md)
