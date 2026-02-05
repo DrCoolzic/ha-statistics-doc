@@ -7,4 +7,4 @@ Published documentation: https://drcoolzic.github.io/ha-statistics-doc/
 
 ## Quick Links
 
-- [Main Document](./docs/doc/ha_statistics.md) | [SQL Queries](./docs/sql/)
+- [Main Document](./docs/doc/overview.md) | [SQL Queries](./docs/sql/)

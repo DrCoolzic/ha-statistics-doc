@@ -1,37 +1,5 @@
 # Useful SQL Queries for accessing States & Attributes
 
-- [Useful SQL Queries for accessing States \& Attributes](#useful-sql-queries-for-accessing-states--attributes)
-  - [Database size information](#database-size-information)
-  - [Count records in tables of interest](#count-records-in-tables-of-interest)
-  - [Top most active entities](#top-most-active-entities)
-  - [Find entities by type](#find-entities-by-type)
-  - [Get the latest state and old\_state of all entities](#get-the-latest-state-and-old_state-of-all-entities)
-  - [Get the latest state and attributes of all entities](#get-the-latest-state-and-attributes-of-all-entities)
-  - [Get state history for a specific entity](#get-state-history-for-a-specific-entity)
-  - [Get state and attributes history for a specific entity](#get-state-and-attributes-history-for-a-specific-entity)
-  - [Extract Specific JSON Fields (e.g logitude, latitude)](#extract-specific-json-fields-eg-logitude-latitude)
-    - [sql \& MySQL](#sql--mysql)
-    - [MySQL specific](#mysql-specific)
-  - [Show all available keys in the JSON object](#show-all-available-keys-in-the-json-object)
-  - [Get All Keys with Sample Values -- sql](#get-all-keys-with-sample-values----sql)
-  - [Get Keys from Latest State Only -- sql](#get-keys-from-latest-state-only----sql)
-  - [Explore Nested JSON Structure (If you have nested JSON objects)](#explore-nested-json-structure-if-you-have-nested-json-objects)
-  - [Track movement between consecutive states](#track-movement-between-consecutive-states)
-  - [Display All Attributes with name/value/type](#display-all-attributes-with-namevaluetype)
-    - [this query create a view](#this-query-create-a-view)
-    - [Same query without creating a view](#same-query-without-creating-a-view)
-  - [Retrieve state changes for an entity between specific dates](#retrieve-state-changes-for-an-entity-between-specific-dates)
-    - [MySQL version](#mysql-version)
-    - [SQLite version](#sqlite-version)
-  - [All State changes in the last minute](#all-state-changes-in-the-last-minute)
-  - [Get States with Pattern Matching\*\*](#get-states-with-pattern-matching)
-    - [Latest temperature sensor values](#latest-temperature-sensor-values)
-    - [All climate and weather sensors (multiple pattern condition)](#all-climate-and-weather-sensors-multiple-pattern-condition)
-    - [Exclude certain patterns using NOT LIKE](#exclude-certain-patterns-using-not-like)
-    - [How many temperature entities do you have? (using count matches)](#how-many-temperature-entities-do-you-have-using-count-matches)
-
----
-
 ## Database size information
 
 ```sql

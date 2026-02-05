@@ -2,21 +2,6 @@
 
 This document provides real-world examples of how statistics can be generated from non-sensor domains in Home Assistant.
 
-- [Real-world examples of statistics from non-sensor domains](#real-world-examples-of-statistics-from-non-sensor-domains)
-  - [1. **Number Domain** (Most Common Non-Sensor)](#1-number-domain-most-common-non-sensor)
-  - [2. **Input Number** (Helper Entity)](#2-input-number-helper-entity)
-  - [3. **Climate Domain** (Indirectly)](#3-climate-domain-indirectly)
-  - [4. **Binary Sensor** (Duration Tracking)](#4-binary-sensor-duration-tracking)
-  - [5. **Counter Helper** (With Custom State Class)](#5-counter-helper-with-custom-state-class)
-  - [6. **Template Entities** (Any Domain)](#6-template-entities-any-domain)
-    - [Template Number with Statistics](#template-number-with-statistics)
-    - [Template Binary Sensor (State Duration)](#template-binary-sensor-state-duration)
-  - [7. **Utility Meter** (Uses Input Sensor)](#7-utility-meter-uses-input-sensor)
-  - [8. **MQTT Number** (External Devices)](#8-mqtt-number-external-devices)
-  - [Real-World Example: Tracking Manual Adjustments](#real-world-example-tracking-manual-adjustments)
-  - [Summary: Where Statistics Appear](#summary-where-statistics-appear)
-  - [Key Takeaway](#key-takeaway)
-
 ## 1. **Number Domain** (Most Common Non-Sensor)
 
 The `number` domain is frequently used for configuration values that you want to track over time:
@@ -209,6 +194,7 @@ automation:
 Now you get statistics showing how often and how much you manually adjust temperatures!
 
 ## Summary: Where Statistics Appear
+
 
 | Domain | Can Have Statistics? | Common Use |
 |--------|---------------------|------------|

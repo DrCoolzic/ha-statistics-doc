@@ -27,33 +27,14 @@ hide:
   </div>
   <div>
     <h2>Documentation structure</h2>
-    <p><a href="docs/doc/ha_statistics.md">Overview</a>: Start here to understand the big picture.</p>
-    <p><a href="doc/part1_fundamental_concepts">Part 1</a>: Concepts: recorder, states, history, metadata.</p>
-    <p><a href="doc/part2_statistics_generation">Part 2</a>: How statistics are computed and stored.</p>
-    <p><a href="doc/part3_working_with_statistics">Part 3</a>: Working with Statistics.</p>
-    <p><a href="doc/part4_practices_troubleshooting">Part 4</a>: Best practices and troubleshooting.</p>
-    <p><a href="sql/sql_stat.md">SQL examples</a>: Practical queries for statistics and states.</p>
+    <p><a href="doc/overview.md">Statistics Documentation</a>: Start here to understand the big picture.</p>
+    <p><a href="sql/sql_stat.md">SQL Examples</a>: Practical queries for statistics and states.</p>
   </div>
 </div>
 
 ## Start here
 
-- [Overview](doc/ha_statistics.md)
+- [Overview](doc/overview.md)
 
-## Sections
 
-- [Part 1 - Foundational Concepts](doc/part1_fundamental_concepts.md)
-- [Part 2 - Statistics Generation](doc/part2_statistics_generation.md)
-- [Part 4 - Best Practices and Troubleshooting](doc/part4_practices_troubleshooting.md)
 
-## Reference
-
-- [Statistics Fields](doc/stat_fields.md)
-- [Non-sensor Examples](doc/statistics_not_sensor.md)
-
-## SQL
-
-- [SQL - Statistics](sql/sql_stat.md)
-- [SQL - States](sql/sql_states.md)
-- [SQL - Tips](sql/sql_tips.md)
-- [SQL - Python](sql/sql_python.md)

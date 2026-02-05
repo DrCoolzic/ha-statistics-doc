@@ -16,7 +16,7 @@
 
 ## 3.2 Accessing Statistics
 
-### 3.2.1 Via the UI
+### Via the UI
 
 Short list of cards / Panels to display statistics
 
@@ -39,11 +39,11 @@ Short list of cards / Panels to display statistics
   
 - And many custom card
 
-### 3.2.2 Via Services
+### Via Services
 
 - `recorder.get_statistics`: retrieve statistics for entities over a specified period
 
-### 3.3.3 Via Database
+### Via Database Query
 
 For advanced analysis and custom integrations it can be useful to perform direct SQL queries of `statistics` and `statistics_short_term` tables. This can be done using the **SQLite web app** (if you use SQLite DB) or the **phpMyAdmin app** (if you are using MariaDB). It is also possible to query the database directly from a python program.
 
@@ -51,7 +51,5 @@ For advanced analysis and custom integrations it can be useful to perform direct
 
 You will find some examples of queries in [SQL Section](../sql/sql.md)
 
-Next
-
-[Part 4_Best Practices and_Troubleshooting.md](part4_practices_troubleshooting.md)
+Next - [Part 4_Best Practices and_Troubleshooting.md](part4_practices_troubleshooting.md)
 

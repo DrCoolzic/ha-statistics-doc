@@ -9,7 +9,7 @@ Home Assistant supports statistics, which are **aggregated and compressed repres
 
 This dramatically reduces storage requirements while preserving trend data.
 
-### Short-term vs Long-term Statistics
+**Short-term vs Long-term Statistics**
 
 | Aspect         | Short-term Statistics    | Long-term Statistics               |
 | ---------------- | -------------------------- | ------------------------------------ |
@@ -23,9 +23,13 @@ This dramatically reduces storage requirements while preserving trend data.
 
 Statistics are automatically generated for **entities** that meet certain criteria. While most statistical entities are in the `sensor` domain, ANY entity with an appropriate `state_class` can generate statistics, regardless of domain (e.g. number, input_number, counter,...)
 
+> For example of statistics from non-sensor domains see [Non-sensor Examples](statistics_not_sensor.md)
+
 Statistical entities can be classified into two categories: **measurement statistics** and **counter statistics**.
 
-### 2.2.1 Measurement Statistics Type (Representing a Measurement)
+### Measurement Type
+
+They represent a **measurement**
 
 **Requirements:**
 
@@ -38,10 +42,20 @@ Home Assistant tracks the **min**, **max**, and **mean** values during each stat
 
 **Important:** The `state` of "measurement statistics" represents a **real-time measurement at a point in time**, such as current temperature, humidity, or electrical power. Their state should represent a **current measurement**, not historical data, aggregations, or forecasts.
 
-**Special case - Angular Measurements:**
+### Measurement Subtypes
+
+The Counter Statistics type can be further divided into two subtypes
+
+**1. `state_class: measurement`**
+
+The state represents a value e.g., a temperature sensor.
+
+**2. `state_class: measurement_angle`**
 For sensors with `state_class: measurement_angle`, the state represents a real-time measurement for angles measured in degrees (°), such as current wind direction. These use **circular mean** calculations to correctly average angles.
 
-### 2.2.2 Counter Statistics Type (Representing a Total Amount)
+### Counter Type
+
+They represent a **total amount**
 
 **Requirements:**
 
@@ -72,7 +86,9 @@ The sensor's value when the first statistics is compiled is used as the initial 
 
 `last_reset` indicates when the counter was reset to zero (e.g., start of a new billing period). When `last_reset` changes, the `state` must be a valid number.
 
-#### Counter Statistics Subtypes
+### Counter Subtypes
+
+The Counter Statistics type can be further divided into two subtypes
 
 **1. `state_class: total`**
 
@@ -82,7 +98,7 @@ The state represents a total amount that can both **increase and decrease**, e.g
 
 Similar to `state_class: total` with the restriction that the state represents a **monotonically increasing positive total** which periodically restarts counting from 0, e.g., a daily amount of consumed gas, weekly water consumption, or lifetime energy consumption.
 
-## 2.3 Statistics Generation Process
+## 2.3 Statistics Generation
 
 Home Assistant provides support to process statistics through the following workflow:
 
@@ -90,13 +106,13 @@ Home Assistant provides support to process statistics through the following work
 2. **Every 5 minutes**, state values are processed and written to `statistics_short_term` table
 3. **Every 60 minutes**, short-term statistics are aggregated into `statistics` table
 
-### Important Notes on Statistics Generation
+**Important Notes on Statistics Generation**
 
 - **No retroactive generation**: Statistics are only generated going forward from when `state_class` is first set
 - **Historical states are not converted**: States recorded before `state_class` was added will not be converted to statistics
 - **Missing data handling**: Gaps in state data create gaps in statistics
 
-## 2.4 Statistics Computation Process
+## 2.4 Statistics Computation
 
 It's worth noting that the `statistics/statistics_short_term` tables are not entirely built from `states`. In practice, the statistics compiler pulls data from multiple recorder sources:
 
@@ -107,11 +123,9 @@ It's worth noting that the `statistics/statistics_short_term` tables are not ent
 
 > Statistics are computed from *recorded history*, which includes `states`, but may also require metadata/attributes and may chain from previously compiled statistics for continuity.
 
-### 2.4.1 Computation for Measurement Statistics
+### Measurement type
 
 For entities with `state_class: measurement` or `measurement_angle`, Home Assistant calculates **min**, **max**, and **mean** values during each statistics period.
-
-#### For `state_class: measurement` (Arithmetic Mean)
 
 **Data Collection:**
 
@@ -121,27 +135,34 @@ For entities with `state_class: measurement` or `measurement_angle`, Home Assist
 
 **Calculation Process (per 5-minute or 1-hour period):**
 
-1. **Mean (Arithmetic Average)**:
-
-   - Sum all valid numeric state values in the period
-   - Divide by the number of valid samples
-   - Formula: `mean = Σ(state_values) / n`
-   - Example: States [2040, 2030, 2023] → mean = 2031
-2. **Min (Minimum)**:
-
-   - The lowest valid numeric value observed during the period
-   - Example: States [2040, 2030, 2023] → min = 2023
-3. **Max (Maximum)**:
-
-   - The highest valid numeric value observed during the period
-   - Example: States [2040, 2030, 2023] → max = 2040
+- The calculation process differ for the two subtypes
 
 **Storage:**
 
 - In `statistics_meta`: `mean_type=1` (arithmetic), `has_sum=0`
 - In `statistics`/`statistics_short_term`: `mean`, `min`, `max` are populated; `state`, `sum` and `last_reset_ts` are NULL
 
-#### For `state_class: measurement_angle` (Circular Mean)
+#### Arithmetic subtype
+
+For entities with `state_class: measurement` an **arithmetic mean** average is used
+
+**Arithmetic mean calculation:**
+
+- **Mean (Arithmetic Average)**:
+  - Sum all valid numeric state values in the period
+  - Divide by the number of valid samples
+  - Formula: `mean = Σ(state_values) / n`
+  - Example: States [2040, 2030, 2023] → mean = 2031
+- **Min (Minimum)**:
+  - The lowest valid numeric value observed during the period
+  - Example: States [2040, 2030, 2023] → min = 2023
+- **Max (Maximum)**:
+  - The highest valid numeric value observed during the period
+  - Example: States [2040, 2030, 2023] → max = 2040
+
+#### Circular subtype
+
+For entities with `state_class: measurement_angle`  a **circular mean** average is used
 
 Angular measurements (like wind direction in degrees) require special handling because standard arithmetic averaging fails for angles. For example, the average of 350° and 10° should be 0° (North), not 180° (South).
 
@@ -164,16 +185,11 @@ Angular measurements (like wind direction in degrees) require special handling b
    - Values close to 1 indicate consistent direction
    - Values close to 0 indicate scattered directions
 
-**Storage:**
-
-- In `statistics_meta`: `mean_type=2` (circular), `has_sum=0`
-- In `statistics`/`statistics_short_term`: `mean`, `min`, `max` and `mean_weight` are populated
-
-### 2.4.2 Computation for Counter Statistics
+### Counter type
 
 For entities with `state_class` set to `total` or `total_increasing`, Home Assistant tracks cumulative values using **state**, **sum**, and **last_reset**.
 
-#### Understanding the Fields
+**Understanding the Fields**
 
 **`state`**: The absolute meter/counter reading at the end of the period
 
@@ -191,7 +207,9 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 - Read from the entity's `last_reset` attribute
 - NULL for lifetime counters that never reset
 
-#### For `state_class: total_increasing` (Monotonically Increasing)
+#### Total subtype
+
+For entities with `state_class: total_increasing` (Monotonically Increasing)
 
 **Characteristics:**
 
@@ -222,7 +240,9 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 14:00: state=72201200, sum=295880 (accumulated growth)
 ```
 
-#### For `state_class: total` (Can Increase or Decrease)
+#### Total_increasing subtype
+
+For entities with `state_class: total` (Can Increase or Decrease)
 
 **Characteristics:**
 
@@ -233,11 +253,9 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 
 1. **State**: Last valid numeric value at end of period
 2. **Sum Calculation**:
-
    - If `last_reset` hasn't changed: `sum = previous_sum + (current_state - previous_state)`
    - If `last_reset` changed: reset detected, restart accumulation
 3. **Last Reset**:
-
    - Copied from entity's `last_reset` attribute
    - When this changes, sum calculation restarts
 
@@ -246,11 +264,11 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 - In `statistics_meta`: `mean_type=0` (none), `has_sum=1`
 - In `statistics`/`statistics_short_term`: `state`, `sum`, and `last_reset_ts` are populated; `mean`, `min`, `max` are NULL
 
-### 2.4.3 Computing Delta/Growth from Statistics
+#### Computing Delta/Growth
 
 While the statistics tables store cumulative `sum` values, dashboards and graphs often need to display **consumption or growth during a specific period**. This delta is computed from the `sum` field.
 
-#### Formula
+**Formula**
 
 - Delta (consumption/growth) = sum_end - sum_start
 
@@ -259,7 +277,7 @@ Where:
 - `sum_start` = sum value at the beginning of the desired period
 - `sum_end` = sum value at the end of the desired period
 
-#### Example: Hourly Energy Consumption
+**Example: Hourly Energy Consumption**
 
 ```sql
 SELECT 
@@ -288,7 +306,7 @@ Result:
 - Between 12:00-13:00: consumed 1744 Wh (1.74 kWh)
 - Between 13:00-14:00: consumed 1664 Wh (1.66 kWh)
 
-#### How Statistics Graph Card Uses This
+**How Statistics Graph Card Uses This**
 
 The built-in statistics graph card:
 
@@ -298,7 +316,7 @@ The built-in statistics graph card:
 
 This is why the `sum` field exists: to enable efficient delta calculations without reprocessing all raw states.
 
-## 2.5 The Recorder Data Flow Diagram
+## 2.5 Recorder Data Flow Diagram
 
 ```mermaid
 flowchart TB
@@ -366,7 +384,7 @@ flowchart TB
     class Frontend frontendBox
 ```
 
-### Time Flow Example (Energy Meter)
+**Time Flow Example (Energy Meter)**
 
 ```text
 ────────────────────────────────────────────────────────────────────────────
@@ -398,7 +416,7 @@ After 12 such 5-minute periods:
 
 ## 2.6 The Statistics Tables
 
-### 2.6.1 statistics_meta Table
+### statistics_meta table
 
 | Field                 | Description                                            | Example                                                   |
 | ----------------------- | -------------------------------------------------------- | ----------------------------------------------------------- |
@@ -410,7 +428,7 @@ After 12 such 5-minute periods:
 | `name`                | Human-friendly name (optional)                         | "Living Room Temperature"                                 |
 | `mean_type`           | Integer: What kind of mean calculation is used         | 0=none, 1=arithmetic, 2=circular                          |
 
-#### Understanding mean_type
+**Understanding mean_type**
 
 | mean_type  | Value | Meaning                  | Use Case                         |
 | ------------ | ------- | -------------------------- | ---------------------------------- |
@@ -418,7 +436,7 @@ After 12 such 5-minute periods:
 | Arithmetic | 1     | Standard arithmetic mean | Temperature, humidity, power     |
 | Circular   | 2     | Circular/angular mean    | Wind direction, compass bearings |
 
-#### Mean_type / Has_sum Combination Table
+**Mean_type / Has_sum Combination Table**
 
 | mean_type | has_sum | Type                   | Columns Available     | Example              |
 | ----------- | --------- | ------------------------ | ----------------------- | ---------------------- |
@@ -428,9 +446,7 @@ After 12 such 5-minute periods:
 
 Any other combination is invalid
 
-### 2.5.2 statistics Table
-
-#### Statistics Used Fields
+### statistics table
 
 We only show the fields that are in use at the time of this writing. Other fields in the table are deprecated and should be ignored.
 
@@ -447,18 +463,20 @@ We only show the fields that are in use at the time of this writing. Other field
 | `last_reset_ts` | When the counter last reset (for sum)                           | Timestamp of reset, or NULL         |
 | `state`         | Last known state at end of period                               | 235.0 (final voltage reading)       |
 | `sum`           | Cumulative sum (for counters like energy)                       | 1523.4 (total kWh)                  |
-||||
 
 > See [statistics fields documentation](stat_fields.md) for a detailed description of the fields `mean_weight`, and `created_ts`
->
 
-## 2.7 Short and long term Statistics tracking examples
+### statistics_short_term table
+
+Same fields as statistics table, but for short term statistics.
+
+## 2.7 Statistics tracking examples
 
 We now look at what is stored in the statistics_short_term table and statistics table using the same practical examples used in [Part 1](part1_fundamental_concepts.md).
 
-### Example 1: Power Consumption (measurement type)
+### ApparentPower Consumption
 
-#### Short Term Statistics
+**Short Term Statistics**
 
 | statistic_id        | period_start    | created_at      | mean        | min  | max  |
 | --------------------- | ----------------- | ----------------- | ------------- | ------ | ------ |
@@ -467,15 +485,15 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | sensor.linky_sinsts | 1/27/2026 13:10 | 1/27/2026 13:15 | 1955.405006 | 1952 | 1959 |
 | ...                 | ...             | ...             | ...         | ...  | ...  |
 
-#### Long Term Statistics
+**Long Term Statistics**
 
 | statistic_id        | period_start    | created_at      | mean        | min  | max  |
 | --------------------- | ----------------- | ----------------- | ------------- | ------ | ------ |
 | sensor.linky_sinsts | 1/27/2026 13:00 | 1/27/2026 14:00 | 1872.448359 | 1704 | 2040 |
 
-### Example 2: Energy Meter (Total/Counter Type)
+### Energy Meter
 
-#### Counter Short Term Statistics
+**Counter Short Term Statistics**
 
 | statistic_id      | period_start    | created_at      | state    | sum    | period_consumption |
 | ------------------- | ----------------- | ----------------- | ---------- | -------- | -------------------- |
@@ -484,7 +502,7 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | sensor.linky_east | 1/27/2026 13:10 | 1/27/2026 13:15 | 72199920 | 294600 | 152                |
 | ...               | ...             | ...             | ...      | ...    | ...                |
 
-#### Counter Long Term Statistics
+**Counter Long Term Statistics**
 
 | statistic_id      | period_start    | created_at      | state    | sum    | period_consumption |
 | ------------------- | ----------------- | ----------------- | ---------- | -------- | -------------------- |

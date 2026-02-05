@@ -1,30 +1,5 @@
 # SQL Tips
 
-- [SQL Tips](#sql-tips)
-  - [SQLite MySQL Dialect Differences](#sqlite-mysql-dialect-differences)
-    - [Conditional logic (CASE) - mostly the same](#conditional-logic-case---mostly-the-same)
-    - [Grouping with aggregation](#grouping-with-aggregation)
-  - [Portability Tips](#portability-tips)
-    - [Most Portable (Works Everywhere)](#most-portable-works-everywhere)
-    - [Less Portable (Database-Specific)](#less-portable-database-specific)
-  - [JSON](#json)
-    - [MySQL JSON extraction shorthand operators](#mysql-json-extraction-shorthand-operators)
-    - [Extract Multiple Attributes (MySQL)](#extract-multiple-attributes-mysql)
-    - [Filter by JSON Values (MySQL)](#filter-by-json-values-mysql)
-    - [Cast to Numeric Type (MySQL)](#cast-to-numeric-type-mysql)
-  - [Pattern Matching](#pattern-matching)
-    - [Find all entities containing "temperature"](#find-all-entities-containing-temperature)
-    - [Common pattern matching wildcards](#common-pattern-matching-wildcards)
-    - [**Pattern Matching Examples**](#pattern-matching-examples)
-  - [Usage of  SQL View](#usage-of--sql-view)
-    - [Think of It Like a Shortcut](#think-of-it-like-a-shortcut)
-    - [Key Characteristics of Views](#key-characteristics-of-views)
-    - [Real-World Analogy](#real-world-analogy)
-    - [When to Use Views](#when-to-use-views)
-    - [View Operations](#view-operations)
-    - [Example: Home Assistant Use Case](#example-home-assistant-use-case)
-    - [Summary](#summary)
-
 1. **Timestamps**: Home Assistant stores times as Unix timestamps (floating point). Use `datetime(timestamp, 'unixepoch', 'localtime')` to convert to readable dates.
 2. **Entity relationships**: Always join `states` with `states_meta` to get the actual entity_id, and optionally with `state_attributes` for attributes.
 3. **Performance**: For large databases, add `WHERE` clauses to limit time ranges, especially when querying states or events.

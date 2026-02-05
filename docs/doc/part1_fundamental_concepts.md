@@ -1,10 +1,8 @@
 # Part 1: Foundational Concepts
 
-## 1.1 Simplified Home Assistant Core Behavior
+## 1.1 Home Assistant Core Behavior overview
 
-Home Assistant Core is an **event-driven application** that maintains real-time state for all entities in your system. Understanding this architecture is crucial to understanding how statistics are derived.
-
-### Key Concepts
+Home Assistant Core is an **event-driven application** that maintains real-time state for all entities in your system. Understanding this architecture is crucial to understanding how statistics are derived. We first look at some key concepts.
 
 ### Entities and States
 
@@ -45,15 +43,13 @@ HA Core can run without persistent history. In this mode, you always know the cu
 
 The Recorder integration stores historical data about your system in a database, enabling you to track how states change over time.
 
-### How Recording Works
-
-#### Sampling and Storage
+### Sampling and Storage
 
 - Objects are **sampled every 5 seconds** by default (configurable)
 - Values are **committed to the database only if they are valid and if they have changed**
 - This 5-second interval is a balance between responsiveness and storage efficiency. According to the Nyquist-Shannon sampling theorem, a 5-second sampling rate means no events are lost if they occur at intervals of **10 seconds or longer**. This covers the vast majority of entity updates while preventing database saturation during event bursts.
 
-#### Database Backend
+### Database Backend
 
 - **Default**: SQLite (suitable for most installations)
 - **Alternatives**: PostgreSQL, MySQL/MariaDB (for advanced setups with high write volumes)
@@ -93,15 +89,22 @@ We only show the fields that are in use at the time of this writing. Other field
 - **`last_changed_ts`**: Changes only when the state value itself changes. The `last_changed_ts` field is stored as NULL when it equals `last_updated_ts` to save database space
 - **`last_reported_ts`**: The timestamp from the integration/device
 
-### State Tracking for Statistics
+---
 
-The `states` table tracks all entity state changes, but in this document we focus specifically on "**statistical entities**" - those that generate **long-term statistics**. These entities belong to two main categories: the **measurement** type and the **total/counter** type (we'll explore these in detail in [Part 2](part2_statistics_generation.md#22-which-entities-generate-statistics)).
+## 1.4 Monitoring Statistical Data
+
+The `states` table tracks **all** entities, but in this document we focus specifically on "**statistics**" entities - those that generate **long-term statistics**.
+These entities belong to two main categories (we'll explore these in detail in [Part 2](part2_statistics_generation.md#22-which-entities-generate-statistics)):
+
+- the **measurement** type
+- the **total/counter** type .
 
 Let's examine how state tracking works with practical examples.
 
-#### Example 1: Tracking Instantaneous Apparent Power Consumption (measurement type)
+### Tracking Apparent Power Consumption
 
-Consider an integration that polls the instantaneous apparent power consumption of a house every minute (a "measurement" type sensor). We can query the state history using:
+Consider an integration that polls the instantaneous apparent power consumption (a "measurement" type sensor) of a house every minute .
+We can query the state table using:
 
 ```sql
 SELECT 
@@ -119,8 +122,6 @@ AND s.last_updated_ts BETWEEN
 ORDER BY s.last_updated_ts;
 ```
 
-Results
-
 | entity_id           | state | last_updated    | last_changed    | last_reported   |
 | --------------------- | ------- | ----------------- | ----------------- | ----------------- |
 | sensor.linky_sinsts | 2040  | 1/27/2026 13:00 | 1/27/2026 13:00 | 1/27/2026 13:00 |
@@ -128,11 +129,9 @@ Results
 | sensor.linky_sinsts | 2023  | 1/27/2026 13:02 | 1/27/2026 13:02 | 1/27/2026 13:02 |
 | ...                 | ...   | ...             | ...             | ...             |
 
-Here we can see that we have a new state entry every minute (set by the integration).
+### Tracking ZigBee Temperature Sensor
 
-#### Example 2: Tracking ZigBee Temperature Sensor (measurement type)
-
-In contrast, a ZigBee temperature sensor reports values at intervals determined by the device itself, which may be irregular:
+In contrast, a ZigBee temperature sensor (a "measurement" type sensor) reports values at intervals determined by the device itself, which may be irregular:
 
 | entity_id                 | state | last_updated  | last_changed  | last_reported |
 | --------------------------- | ------- | --------------- | --------------- | --------------- |
@@ -141,9 +140,9 @@ In contrast, a ZigBee temperature sensor reports values at intervals determined 
 | sensor.family_temperature | 13.6  | 1/27/26 12:38 | 1/27/26 12:38 | 1/27/26 12:38 |
 | sensor.family_temperature | 13.64 | 1/27/26 12:51 | 1/27/26 12:51 | 1/27/26 12:51 |
 
-#### Example 3: Energy Meter (Total/Counter Type)
+### Tracking Energy Meter
 
-The two entities presented above belong to the **measurement** type, where we measure an instantaneous values that fluctuates up and down based on current conditions. We also have entities that belong to the **counter** type (e.g., energy consumption) where the state values are monotonically increasing:
+The two entities presented above generates statistics that belong to the **measurement** type. This example belongs to the **counter** type (e.g., energy consumption) where the state values are monotonically increasing:
 
 | entity_id         | state    | last_updated    | last_changed    | last_reported   |
 | ------------------- | ---------- | ----------------- | ----------------- | ----------------- |
@@ -152,6 +151,4 @@ The two entities presented above belong to the **measurement** type, where we me
 | sensor.linky_east | 72199520 | 1/27/2026 13:01 | 1/27/2026 13:01 | 1/27/2026 13:01 |
 | ...               | ...      | ...             | ...             | ...             |
 
-Next
-
-[Part 2: Statistics Generation](part2_statistics_generation.md)
+**Next** - [Part 2: Statistics Generation](part2_statistics_generation.md)

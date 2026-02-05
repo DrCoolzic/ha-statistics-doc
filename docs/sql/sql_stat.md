@@ -1,24 +1,6 @@
 
 # Useful SQL Queries for Accessing Statistics Information
 
-- [Useful SQL Queries for Accessing Statistics Information](#useful-sql-queries-for-accessing-statistics-information)
-  - [Retrieve measurement statistics between specific dates](#retrieve-measurement-statistics-between-specific-dates)
-    - [MySQL version](#mysql-version)
-    - [SQLite version](#sqlite-version)
-  - [Compute average/min/max from measurement statistics for 7 days](#compute-averageminmax-from-measurement-statistics-for-7-days)
-  - [Retrieve counter statistics between specific dates  -- SQLite version](#retrieve-counter-statistics-between-specific-dates-----sqlite-version)
-  - [Get All Statistics for a day (all day) for a specific entity](#get-all-statistics-for-a-day-all-day-for-a-specific-entity)
-  - [Calculate daily consumption from sum](#calculate-daily-consumption-from-sum)
-  - [Calculate Hourly Consumption (Energy Used Per Hour)](#calculate-hourly-consumption-energy-used-per-hour)
-  - [Queries statistics to find entities: matching state / deleted from state / external](#queries-statistics-to-find-entities-matching-state--deleted-from-state--external)
-    - [Count each category](#count-each-category)
-    - [List entities in categories active/external/deleted](#list-entities-in-categories-activeexternaldeleted)
-    - [List ONLY Deleted Entities](#list-only-deleted-entities)
-    - [List ONLY External Statistics](#list-only-external-statistics)
-    - [Comprehensive Summary with All Details](#comprehensive-summary-with-all-details)
-    - [Find Entities That Might Be Renamed](#find-entities-that-might-be-renamed)
-    - [Export statistics inventory](#export-statistics-inventory)
-
 ## Retrieve measurement statistics between specific dates
 
 ### MySQL version
