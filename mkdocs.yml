@@ -14,6 +14,7 @@ nav:
       - Overview: doc/ha_statistics.md
       - Part 1 - Foundational Concepts: doc/part1_fundamental_concepts.md
       - Part 2 - Statistics Generation: doc/part2_statistics_generation.md
+      - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
       - Statistics Fields: doc/stat_fields.md
       - Non-sensor Examples: doc/statistics_not_sensor.md

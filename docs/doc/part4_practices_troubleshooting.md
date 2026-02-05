@@ -1,6 +1,6 @@
-## Part 4: Best Practices and Troubleshooting
+# Part 4: Best Practices and Troubleshooting
 
-### 4.1 State Class Selection Guide
+## 4.1 State Class Selection Guide
 
 Use this table to quickly determine which `state_class` to use for your entity:
 
@@ -24,7 +24,7 @@ Use this table to quickly determine which `state_class` to use for your entity:
 
 ---
 
-### Troubleshooting Decision Tree
+**Troubleshooting Decision Tree**
 
 ```text
 ┌─────────────────────────────────────┐
@@ -62,22 +62,22 @@ Use this table to quickly determine which `state_class` to use for your entity:
                   └─ Meter replaced? ──────────────────────> Use recorder.adjust_sum
 ```
 
-### 4.2 Configuration Recommendations
+## 4.2 Recorder Configuration Recommendations
 
-#### Purge Settings
+### Purge Settings
 
 Adjust recorder purge settings based on your storage capacity:
 
 ```yaml
 recorder:
   purge_keep_days: 7  # Keep detailed states for 7 days
-  commit_interval: 1  # Commit to DB every second
+  commit_interval: 10  # Commit to DB every 10 second
   # Note: Statistics have separate retention:
   # - Short-term statistics auto-purge after 10 days
   # - Long-term statistics kept indefinitely unless manually purged
 ```
 
-#### Include/Exclude Entities
+### Include/Exclude Entities
 
 Only record what you need:
 
@@ -91,16 +91,16 @@ recorder:
       - sensor.temp_*_battery
 ```
 
-### 4.3 Statistics Limitations
+## 4.3 Statistics Limitations
 
 - **No retroactive generation**: Statistics are only generated going forward
 - **Missing data handling**: Gaps in state data create gaps in statistics
 - **State class changes**: Changing state class doesn't recalculate existing statistics
 - **Precision**: Aggregation inherently loses detail compared to raw states
 
-### 4.4 Troubleshooting
+## 4.4 Troubleshooting
 
-#### Common Issues & Solutions
+### Common Issues & Solutions
 
 | **Issue**                     | **Cause**                      | **Solution**                                        |
 | ------------------------------- | -------------------------------- | ----------------------------------------------------- |
@@ -110,20 +110,20 @@ recorder:
 | Statistics reset unexpectedly | Unit changed (e.g., Wh → kWh) | New statistic_id created; use consistent units      |
 | Missing historical stats      | `state_class` added recently   | Statistics only generated going forward             |
 
-#### Missing Statistics
+### Missing Statistics
 
 - Verify entity has `state_class` attribute
 - Check entity provides numerical values
 - Ensure recorder is including the entity
 - Check Developer Tools → Statistics for errors
 
-#### Incorrect Values
+### Incorrect Values
 
 - Use `recorder.adjust_sum` service to fix cumulative totals
 - Check for unit conversions in entity attributes
 - Verify state changes are being recorded in `states` table
 
-#### Performance Issues
+### Performance Issues
 
 - Reduce `purge_keep_days` to limit database size
 - Consider migrating to PostgreSQL for large installations

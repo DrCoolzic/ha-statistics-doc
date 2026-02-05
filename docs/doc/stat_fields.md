@@ -1,4 +1,4 @@
-# Undocumented Statistics Table Fields: `created_ts` and `mean_weight`
+# Statistics Table Fields: `created_ts` and `mean_weight`
 
 ## Overview
 
@@ -80,6 +80,16 @@ FROM statistics
 WHERE metadata_id = 86
 ORDER BY start_ts DESC;
 ```
+
+| period_start   | written_at     | mean        | min   | max   |
+| -------------- | -------------- | ----------- | ----- | ----- |
+| 2/5/2026 7:00  | 2/5/2026 8:00  | 144.3273889 | 142.2 | 146.1 |
+| 2/5/2026 8:00  | 2/5/2026 9:00  | 143.6626811 | 141.6 | 146.1 |
+| 2/5/2026 9:00  | 2/5/2026 10:00 | 144.4043766 | 141.5 | 146.7 |
+| 2/5/2026 10:00 | 2/5/2026 11:00 | 146.109867  | 142.7 | 148.9 |
+| 2/5/2026 11:00 | 2/5/2026 12:00 | 145.40353   | 142.2 | 148   |
+| 2/5/2026 12:00 | 2/5/2026 13:00 | 143.6489361 | 142.2 | 145.6 |
+| 2/5/2026 13:00 | 2/5/2026 14:00 | 142.8146935 | 141.2 | 144.6 |
 
 ### Deprecated Fields
 
@@ -205,7 +215,7 @@ For non-angular sensors (temperature, humidity, power, etc.), `mean_weight` rema
 ```sql
 SELECT sm.statistic_id, sm.unit_of_measurement, sm.mean_type
 FROM statistics_meta sm
-WHERE sm.mean_type = 1;
+WHERE sm.mean_type = 2;
 ```
 
 **Get wind direction statistics with weights:**
@@ -227,7 +237,7 @@ ORDER BY s.start_ts DESC;
 
 The circular mean implementation can be found in Home Assistant's core:
 - `homeassistant/components/sensor/recorder.py`
-- Statistics compilation uses circular statistics when `mean_type = 1`
+- Statistics compilation uses circular statistics when `mean_type = 2`
 - Vector averaging with proper weight tracking
 
 ---
@@ -293,7 +303,7 @@ When importing historical statistics, ensure:
 
 **Solution:** 
 1. Check if entity should have circular mean: `SELECT * FROM statistics_meta WHERE statistic_id = 'sensor.your_wind_sensor'`
-2. If `mean_type = 0` but should be `1`, the integration needs to be updated
+2. If `mean_type = 1` but should be `2`, the integration needs to be updated
 3. Historical data may need recalculation or manual correction
 
 ### Issue: mean_weight column missing (pre-2025.4)

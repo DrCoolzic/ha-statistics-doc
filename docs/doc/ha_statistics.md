@@ -1,7 +1,5 @@
 # Understanding and Using Home Assistant Statistics
 
-
-
 ## Overview
 
 This document explains how statistics are generated in Home Assistant (HA) and how to work with them effectively. Statistics provide aggregated, long-term data storage that is more efficient than raw state history, making them essential for tracking trends, creating dashboards, and analyzing system behavior over time.
@@ -10,16 +8,21 @@ Before diving into statistics themselves, we'll explore how HA Core and the Reco
 
 ---
 
-## Part 1: Foundational Concepts
-TODO write a summary of the content of this section and provide a link to part1 doc
+## [Part 1](part1_fundamental_concepts.md): Foundational Concepts
+
+Part 1 of the documentation outlines how Home Assistant functions as an event-driven architecture that manages real-time data through entities and records that data for historical analysis.
+
 
 ## Part 2: Statistics Generation
+
 TODO write a summary of the content of this section and provide a link to part2 doc
 
 ## Part 3: Working with Statistics
+
 TODO write a summary of the content of this section and provide a link to part3 doc
 
 ## Part 4: Best Practices and Troubleshooting
+
 TODO write a summary of the content of this section and provide a link to part4 doc
 
 ## Conclusion
