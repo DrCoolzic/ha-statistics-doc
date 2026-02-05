@@ -49,7 +49,7 @@ For advanced analysis and custom integrations it can be useful to perform direct
 
 > Note we are using the new terminology of **App** introduced in 2026.2 (used to be called **Addon**)
 
-You will find some examples of queries in [SQL Section](../sql/sql.md)
+You will find some examples of queries in [SQL Section](../sql/sql_overview.md)
 
 Next - [Part 4_Best Practices and_Troubleshooting.md](part4_practices_troubleshooting.md)
 
