@@ -1,22 +1,3 @@
-# Finding & Fixing Statistics errors
-
-Over time, errors may appear in the statistical database for various reasons. We will first describe the different types of errors and then we will examine how some of them can be corrected.
-
-## Errors in the statistics database
-
-- missing  statistics: sensor/integration not delivering data
-  - for measurement "hole" in the history graph
-  - for counters big jump in bar graph
-- wrong statistics: sensor/integration delivering wrong data (glitches, spikes, etc.)
-  - for measurement just one invalid value
-  - for counters big jump in bar graph in one direction followed by a big jump in the other direction (should generate a reset?)
-- statistics on deleted entities
-- unit of measurement changed
-- renamed entities
-
-
-
-
 # Part 5: Finding & Fixing Statistics Errors
 
 Over time, errors may appear in the statistical database for various reasons. This part describes the different types of errors, how to identify them, and methods to correct them.
@@ -35,50 +16,146 @@ Understanding the error type is the first step toward fixing it. Each error mani
 Periods where no statistics were recorded despite the entity existing and presumably having data.
 
 **Causes:**
+
 - Sensor/integration temporarily not delivering data (device offline, network issue)
 - Entity was excluded from recorder during that period
 - Statistics generation was disabled (`state_class` was temporarily removed)
 - Home Assistant was not running
 - Database write errors
 
-**Manifestation:**
+**Manifestation for measurement entities:**
 
-**For measurement entities:**
 - Visible gaps/holes in history graphs
 - Flat lines where interpolation fails
 - Missing data points in min/max/mean charts
 
-**For counter entities:**
+![Missing Temp](../assets/missing_temp.png)
+
+**Manifestation for counter entities:**
+
 - Missing bars in bar chart (energy dashboard)
 - Discontinuity in cumulative sum
 - Appears as zero consumption for that period
 
-**Example:**
-```
-Temperature History:
-12:00 → 21.5°C
-13:00 → 22.0°C
-14:00 → [MISSING]  ← No data recorded
-15:00 → [MISSING]  ← No data recorded
-16:00 → 23.5°C
-```
+![Missing states](../assets/missing_states.png)
 
-**Database signature:**
+As we can see huge peak hide normal values
+
+**Database signature for measurements:**
+
 ```sql
--- Check for gaps in statistics
+-- Check for gaps in measurement statistics
+-- Only shows rows with gaps (WHERE gap_seconds > 3600)
+-- Shows gap size in hours for easier reading
+-- Distinguishes between regular gaps (>1h) and large gaps (>2h)
+-- Sorts by largest gaps first (most problematic)
 SELECT 
-  datetime(start_ts, 'unixepoch', 'localtime') as period,
-  mean,
-  CASE 
-    WHEN start_ts - LAG(start_ts) OVER (ORDER BY start_ts) > 3600 
-    THEN 'GAP DETECTED'
-    ELSE 'OK'
-  END as gap_check
-FROM statistics
-WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature')
-ORDER BY start_ts DESC
+datetime(s1.start_ts, 'unixepoch', 'localtime') as gap_after_period,
+datetime(s2.start_ts, 'unixepoch', 'localtime') as gap_before_period,
+(s2.start_ts - s1.start_ts) / 3600.0 as gap_hours,
+s1.mean as last_value_before_gap,
+s2.mean as first_value_after_gap
+FROM statistics s1
+JOIN statistics s2 ON s2.metadata_id = s1.metadata_id 
+AND s2.start_ts = (
+    SELECT MIN(start_ts) 
+    FROM statistics 
+    WHERE metadata_id = s1.metadata_id 
+    AND start_ts > s1.start_ts
+)
+WHERE s1.metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature')
+AND (s2.start_ts - s1.start_ts) > 3600
+ORDER BY gap_hours DESC
 LIMIT 50;
 ```
+
+| period | mean | gap_hours | gap_severity
+|---|---|---|---
+|2025-09-21 23:00:00.000000 | 25.717321462847288 | 456 | ⚠️ LARGE GAP (>2 hours)
+|2025-01-14 20:00:00.000000 | 18.87051401771877 | 228 | ⚠️ LARGE GAP (>2 hours)
+|2022-12-13 20:00:00.000000 | 23.57158472033553 | 147 | ⚠️ LARGE GAP (>2 hours)
+|2022-12-14 13:00:00.000000 | 20.547605773116427 | 11 | ⚠️ LARGE GAP (>2 hours)
+|2023-12-03 08:00:00.000000 | 19.8 | 9 | ⚠️ LARGE GAP (>2 hours)
+|2022-12-25 18:00:00.000000 | 20.300000000000004 | 9 | ⚠️ LARGE GAP (>2 hours)
+|2025-01-22 19:00:00.000000 | 17.69790881333039 | 7 | ⚠️ LARGE GAP (>2 hours)
+|2023-12-03 17:00:00.000000 | 19.725162957811452 | 3 | ⚠️ LARGE GAP (>2 hours)
+|2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED
+|2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED
+
+**Database signature for counters:**
+
+```sql
+-- Check for gaps in counter statistics (only show gaps) - SQLite
+WITH gap_analysis AS (
+  SELECT 
+    datetime(start_ts, 'unixepoch', 'localtime') as period,
+    state,
+    sum,
+    sum - LAG(sum) OVER (ORDER BY start_ts) as consumption,
+    start_ts,
+    LAG(start_ts) OVER (ORDER BY start_ts) as previous_ts,
+    start_ts - LAG(start_ts) OVER (ORDER BY start_ts) as gap_seconds
+  FROM statistics
+  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.east')
+)
+SELECT 
+  period,
+  state as counter_value,
+  sum as cumulative_sum,
+  consumption as period_consumption,
+  gap_seconds / 3600.0 as gap_hours,
+  CASE 
+    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP (>2 hours)'
+    WHEN gap_seconds > 3600 THEN '⚠️ GAP DETECTED'
+  END as gap_severity,
+  '❌ Missing consumption data for this period' as impact
+FROM gap_analysis
+WHERE gap_seconds > 3600  -- Only show gaps > 1 hour
+ORDER BY gap_seconds DESC
+LIMIT 50;
+```
+
+| period              | counter_value | cumulative_sum | period_consumption | gap_hours | gap_severity   | impact                              |
+|---------------------|---------------|----------------|-------------------|-----------|----------------|-------------------------------------|
+| 2026-01-15 14:00:00 | 1250.5        | 1250.5         | NULL              | 6.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data        |
+| 2026-01-20 06:00:00 | 1305.2        | 1305.2         | NULL              | 3.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data        |
+
+```sql
+-- Version Showing gaps with before/after context - SQLite
+-- This version shows the records before and after each gap for better context:
+SELECT 
+  datetime(s1.start_ts, 'unixepoch', 'localtime') as last_record_before_gap,
+  s1.state as state_before,
+  s1.sum as sum_before,
+  '⚠️ --- GAP ---' as gap_indicator,
+  ROUND((s2.start_ts - s1.start_ts) / 3600.0, 1) as gap_hours,
+  datetime(s2.start_ts, 'unixepoch', 'localtime') as first_record_after_gap,
+  s2.state as state_after,
+  s2.sum as sum_after,
+  s2.sum - s1.sum as sum_change_across_gap,
+  CASE 
+    WHEN s2.sum = s1.sum THEN '❌ No consumption recorded (sum unchanged)'
+    WHEN s2.state < s1.state THEN '⚠️ Counter may have reset during gap'
+    ELSE '⚠️ Consumption during gap unknown'
+  END as gap_impact
+FROM statistics s1
+JOIN statistics s2 ON s2.metadata_id = s1.metadata_id 
+  AND s2.start_ts = (
+    SELECT MIN(start_ts) 
+    FROM statistics 
+    WHERE metadata_id = s1.metadata_id 
+    AND start_ts > s1.start_ts
+  )
+WHERE s1.metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.east')
+  AND (s2.start_ts - s1.start_ts) > 3600
+ORDER BY gap_hours DESC
+LIMIT 50;
+```
+
+| before_gap_ts | state_bef. | sum_bef. | gap_hour | first_record_after_gap | state_aft. | sum_aft. | sum_change | gap_impact                    |
+|------------------------|--------------|------------|-----------|------------------------|-------------|-----------|------------|-------------------------------|
+| 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap    |
+| 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded   |
 
 ---
 
@@ -88,6 +165,7 @@ LIMIT 50;
 Statistics contain obviously wrong values due to sensor glitches, measurement errors, or data corruption.
 
 **Causes:**
+
 - Sensor hardware malfunction (reading errors)
 - Communication interference (corrupt packets)
 - Integration bugs (incorrect parsing)
@@ -95,29 +173,29 @@ Statistics contain obviously wrong values due to sensor glitches, measurement er
 - Power fluctuations affecting readings
 - No validation in template sensors
 
-**Manifestation:**
+**Manifestation for measurement entities:**
 
-**For measurement entities:**
 - Extreme outliers in min/max values
 - Impossible values (e.g., -273.15°C temperature, 150% humidity)
 - Single extreme spikes followed by return to normal
 - Affects mean calculation for that period
 
-**For counter entities:**
+**Manifestation for counter entities:**
+
 - Massive positive spike followed by negative spike (or vice versa)
 - Sum jumps unrealistically high then drops back
 - Can trigger false counter reset detection
 - Creates artificial consumption peaks in energy dashboard
 
-**Example:**
-```
+```text
 Temperature readings:
 12:00 → mean: 21.5°C, min: 21.2°C, max: 21.8°C  [NORMAL]
 13:00 → mean: 45.2°C, min: 21.5°C, max: 89.7°C  [SPIKE ERROR]
 14:00 → mean: 21.8°C, min: 21.6°C, max: 22.0°C  [BACK TO NORMAL]
 ```
 
-**Database signature:**
+**Database signature for measurement:**
+
 ```sql
 -- Find outliers (values > 3 standard deviations from mean)
 WITH stats AS (
@@ -142,7 +220,140 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 ORDER BY start_ts DESC;
 ```
 
+**Database signature for counter:**
+
+```sql
+-- Find invalid spikes in counter statistics - SQLite
+WITH counter_analysis AS (
+  SELECT 
+    datetime(start_ts, 'unixepoch', 'localtime') as period,
+    state,
+    sum,
+    LAG(state) OVER (ORDER BY start_ts) as previous_state,
+    LAG(sum) OVER (ORDER BY start_ts) as previous_sum,
+    state - LAG(state) OVER (ORDER BY start_ts) as state_change,
+    sum - LAG(sum) OVER (ORDER BY start_ts) as consumption,
+    -- Calculate average consumption over last 24 periods
+    AVG(sum - LAG(sum) OVER (ORDER BY start_ts)) OVER (
+      ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
+    ) as avg_24h_consumption,
+    -- Calculate standard deviation
+    (sum - LAG(sum) OVER (ORDER BY start_ts)) as hourly_consumption
+  FROM statistics
+  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+)
+SELECT 
+  period,
+  state as counter_value,
+  sum as cumulative_sum,
+  consumption as hourly_consumption,
+  ROUND(avg_24h_consumption, 2) as avg_24h,
+  ROUND(consumption / NULLIF(avg_24h_consumption, 0), 1) as spike_multiplier,
+  CASE 
+    WHEN consumption IS NULL THEN 'First record'
+    WHEN avg_24h_consumption = 0 THEN '⚠️ No baseline yet'
+    WHEN consumption < 0 THEN '❌ NEGATIVE consumption (impossible!)'
+    WHEN consumption > avg_24h_consumption * 10 THEN '❌ EXTREME SPIKE (>10x normal)'
+    WHEN consumption > avg_24h_consumption * 5 THEN '⚠️ LARGE SPIKE (>5x normal)'
+    WHEN consumption > avg_24h_consumption * 3 THEN '⚠️ SPIKE DETECTED (>3x normal)'
+    WHEN ABS(state_change) < 0.001 AND consumption > 0 THEN '⚠️ Sum increased but state unchanged'
+    ELSE 'OK'
+  END as spike_status,
+  CASE 
+    WHEN consumption < 0 THEN 'Counter decreased (hardware error or missed reset)'
+    WHEN consumption > avg_24h_consumption * 10 THEN 'Unrealistic consumption spike'
+    WHEN ABS(state_change) < 0.001 AND consumption > 0 THEN 'Sum/state mismatch'
+    ELSE ''
+  END as issue_description
+FROM counter_analysis
+WHERE consumption IS NOT NULL
+  AND avg_24h_consumption > 0
+  AND (
+    consumption < 0 
+    OR consumption > avg_24h_consumption * 3
+    OR (ABS(state_change) < 0.001 AND consumption > 0)
+  )
+ORDER BY ABS(consumption / NULLIF(avg_24h_consumption, 1)) DESC
+LIMIT 50;
+```
+
+| period              | counter_value | cumulative_sum | hourly_consumption | avg_24h | spike_multiplier | spike_status              | issue_description              |
+|---------------------|---------------|----------------|-------------------|---------|------------------|---------------------------|--------------------------------|
+| 2026-01-15 13:00:00 | 1255.2        | 1255.2         | 2500.0            | 2.5     | 1000.0           | ❌ EXTREME SPIKE (>10x)  | Unrealistic consumption spike  |
+| 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2             | 2.3     | -19.7            | ❌ NEGATIVE consumption  | Counter decreased              |
+| 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5              | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)    |                                |
+
+```sql
+-- Detect spike + recovery pattern (glitch signature) - SQLite (corrected)
+WITH consumption_calc AS (
+  -- Step 1: Calculate consumption and next consumption
+  SELECT 
+    datetime(start_ts, 'unixepoch', 'localtime') as period,
+    start_ts,
+    state,
+    sum,
+    sum - LAG(sum) OVER (ORDER BY start_ts) as consumption,
+    LEAD(sum) OVER (ORDER BY start_ts) - sum as next_consumption
+  FROM statistics
+  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+),
+consumption_with_avg AS (
+  -- Step 2: Calculate rolling average
+  SELECT 
+    period,
+    state,
+    sum,
+    consumption,
+    next_consumption,
+    AVG(consumption) OVER (
+      ORDER BY start_ts
+      ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
+    ) as avg_consumption
+  FROM consumption_calc
+)
+SELECT 
+  period,
+  state,
+  sum,
+  ROUND(consumption, 2) as this_period_consumption,
+  ROUND(next_consumption, 2) as next_period_consumption,
+  ROUND(avg_consumption, 2) as baseline_avg,
+  CASE 
+    WHEN consumption > avg_consumption * 5 
+         AND next_consumption < 0 
+         AND ABS(next_consumption) > avg_consumption * 3
+    THEN '❌ SPIKE + DROP GLITCH DETECTED'
+    WHEN consumption > avg_consumption * 5 
+         AND next_consumption < avg_consumption * 0.2
+    THEN '⚠️ SPIKE followed by very low consumption'
+    WHEN consumption < 0 
+         AND next_consumption > avg_consumption * 3
+    THEN '⚠️ DROP followed by spike (inverse glitch)'
+    ELSE 'Potential issue'
+  END as glitch_pattern,
+  'Data integrity compromised - manual correction may be needed' as recommendation
+FROM consumption_with_avg
+WHERE avg_consumption > 0
+  AND (
+    -- Spike followed by negative consumption
+    (consumption > avg_consumption * 5 AND next_consumption < 0) OR
+    -- Negative consumption followed by spike
+    (consumption < 0 AND next_consumption > avg_consumption * 3) OR
+    -- Extreme spike followed by near-zero
+    (consumption > avg_consumption * 10 AND next_consumption < avg_consumption * 0.2)
+  )
+ORDER BY period DESC
+LIMIT 50;
+```
+
+| period              | state  | sum    | this_period | next_period | baseline_avg | glitch_pattern                | recommendation                      |
+|---------------------|--------|--------|-------------|-------------|--------------|-------------------------------|-------------------------------------|
+| 2026-01-15 13:00:00 | 1255.2 | 1255.2 | 2500.00     | -2480.00    | 2.50         | ❌ SPIKE + DROP GLITCH      | Manual correction needed            |
+| 2026-02-03 09:00:00 | 1580.5 | 1580.5 | 125.50      | 0.10        | 2.80         | ⚠️ SPIKE + very low         | Manual correction needed            |
+
 ---
+
+TODO - Not checked below 
 
 ### 5.1.3 Statistics on Deleted Entities
 
@@ -150,6 +361,7 @@ ORDER BY start_ts DESC;
 Statistics remain in the database for entities that no longer exist in Home Assistant.
 
 **Causes:**
+
 - Entity was deleted or removed from configuration
 - Integration was uninstalled
 - Device was removed
@@ -157,6 +369,7 @@ Statistics remain in the database for entities that no longer exist in Home Assi
 - Statistics were not purged when entity was deleted
 
 **Manifestation:**
+
 - Statistics shown in Developer Tools → Statistics for non-existent entities
 - Orphaned `statistic_id` entries in `statistics_meta`
 - Wasted database space
@@ -164,7 +377,8 @@ Statistics remain in the database for entities that no longer exist in Home Assi
 - Entity appears in statistics but not in entity list
 
 **Example:**
-```
+
+```text
 statistics_meta table:
 | statistic_id                  | source   | unit | has_sum |
 |-------------------------------|----------|------|---------|
@@ -174,6 +388,7 @@ statistics_meta table:
 ```
 
 **Database signature:**
+
 ```sql
 -- Find statistics for entities that no longer exist
 -- (Requires manual verification against current entities)
@@ -197,6 +412,7 @@ ORDER BY last_record DESC;
 The sensor's unit of measurement changed, creating a new statistics series and discontinuity in data.
 
 **Causes:**
+
 - Sensor configuration was changed (e.g., Wh → kWh)
 - Integration updated with different default units
 - Manual reconfiguration
@@ -204,6 +420,7 @@ The sensor's unit of measurement changed, creating a new statistics series and d
 - Template sensor modified
 
 **Manifestation:**
+
 - Two separate entries in `statistics_meta` for what should be one sensor
 - Different `statistic_id` entries (often with suffix like `_2`, `_3`)
 - Graphs show discontinuity at the change point
@@ -211,6 +428,7 @@ The sensor's unit of measurement changed, creating a new statistics series and d
 - Historical data appears "lost" (actually in different series)
 
 **Example:**
+
 ```
 statistics_meta table:
 | id | statistic_id              | unit_of_measurement | has_sum |
@@ -220,6 +438,7 @@ statistics_meta table:
 ```
 
 **Visual effect:**
+
 ```
 Energy graph shows:
 Jan-Nov 2025: [███████████████] 15000 Wh total
@@ -227,6 +446,7 @@ Dec 2025-Jan 2026: [No data shown] ← Actually exists but in different series
 ```
 
 **Database signature:**
+
 ```sql
 -- Find duplicate statistic_id with different units
 SELECT 
@@ -248,12 +468,14 @@ ORDER BY statistic_id;
 Entity was renamed, but statistics remain under the old `entity_id`, causing apparent data loss.
 
 **Causes:**
+
 - Entity renamed via UI (Settings → Entities)
 - Entity ID changed in configuration.yaml
 - Integration reorganized entity IDs
 - Device renamed causing entity_id change
 
 **Manifestation:**
+
 - Statistics exist for old entity_id but not new one
 - Historical data appears "missing" for renamed entity
 - Two entries appear: one with history (old name), one without (new name)
@@ -261,6 +483,7 @@ Entity was renamed, but statistics remain under the old `entity_id`, causing app
 - Automations referencing old statistics fail
 
 **Example:**
+
 ```
 Old: sensor.living_room_temperature
 New: sensor.lounge_temperature
@@ -273,6 +496,7 @@ statistics_meta shows:
 ```
 
 **Database signature:**
+
 ```sql
 -- Find statistics that might be renamed (similar names, one stopped, one started)
 SELECT 
@@ -300,6 +524,7 @@ ORDER BY time_gap_seconds;
 Multiple statistics records exist for the same entity and time period, causing data integrity issues.
 
 **Causes:**
+
 - Database corruption
 - Import errors when migrating databases
 - Manual SQL modifications gone wrong
@@ -307,6 +532,7 @@ Multiple statistics records exist for the same entity and time period, causing d
 - Concurrent write conflicts
 
 **Manifestation:**
+
 - Multiple records with identical `metadata_id` and `start_ts`
 - Inconsistent values shown in different UI views
 - Errors in Developer Tools → Statistics validation
@@ -314,6 +540,7 @@ Multiple statistics records exist for the same entity and time period, causing d
 - Incorrect aggregations in long-term statistics
 
 **Example:**
+
 ```sql
 SELECT * FROM statistics 
 WHERE metadata_id = 42 AND start_ts = 1735660800;
@@ -325,6 +552,7 @@ WHERE metadata_id = 42 AND start_ts = 1735660800;
 ```
 
 **Database signature:**
+
 ```sql
 -- Find duplicate statistics
 SELECT 
@@ -347,12 +575,14 @@ ORDER BY start_ts DESC;
 The `state_class` attribute was changed (e.g., `measurement` → `total_increasing`), creating incompatible statistics.
 
 **Causes:**
+
 - Configuration error or experimentation
 - Integration update changed default state class
 - User misunderstanding of state_class purpose
 - Template sensor reconfiguration
 
 **Manifestation:**
+
 - New `statistic_id` may be created with suffix
 - Existing statistics may show validation warnings
 - Incorrect statistics type for entity behavior
@@ -360,6 +590,7 @@ The `state_class` attribute was changed (e.g., `measurement` → `total_increasi
 - Graphs show wrong visualization type
 
 **Example:**
+
 ```
 Before: state_class: measurement  → tracks mean/min/max
 After:  state_class: total_increasing → tracks sum
@@ -371,6 +602,7 @@ Result:
 ```
 
 **Database signature:**
+
 ```sql
 -- Detect potential state_class changes
 -- (Look for metadata_id with both has_sum=0 and has_sum=1 for similar statistic_id)
@@ -397,6 +629,7 @@ WHERE sm1.has_sum != sm2.has_sum
 A `total_increasing` counter reset to zero, but the statistics system didn't detect it, resulting in negative or missing consumption data.
 
 **Causes:**
+
 - Reset was too small (< 10% threshold)
 - Counter decremented instead of resetting (hardware issue)
 - Statistics compiler wasn't running during reset
@@ -404,12 +637,14 @@ A `total_increasing` counter reset to zero, but the statistics system didn't det
 - Sensor temporarily reported unavailable during reset
 
 **Manifestation:**
+
 - Negative hourly consumption values in energy dashboard
 - Sum stops increasing or shows incorrect totals
 - Bar chart shows no consumption when there should be
 - State value is lower than previous, but sum didn't adjust
 
 **Example:**
+
 ```
 Counter readings:
 10:00 → state: 1250 kWh, sum: 1250 kWh
@@ -422,6 +657,7 @@ Actual: sum froze, hourly consumption = 0
 ```
 
 **Database signature:**
+
 ```sql
 -- Find potential missed resets
 SELECT 
@@ -450,12 +686,14 @@ LIMIT 50;
 Non-angular data is being processed with circular mean, or angular data with arithmetic mean.
 
 **Causes:**
+
 - Incorrect `device_class` configuration
 - Template sensor without proper device_class
 - Integration bug assigning wrong device_class
 - Manual database modification error
 
 **Manifestation:**
+
 - Angular sensors show impossible mean values
   - Wind direction mean of 520° (should be 0-360°)
   - Compass heading with negative values
@@ -463,6 +701,7 @@ Non-angular data is being processed with circular mean, or angular data with ari
   - Temperature treated as circular (rare but possible configuration error)
 
 **Example:**
+
 ```
 Wind Direction Sensor with mean_type=1 (arithmetic) - WRONG:
 0° + 350° + 340° = 690° / 3 = 230°  ← WRONG! (should be ~350°)
@@ -472,6 +711,7 @@ Wind Direction Sensor with mean_type=2 (circular) - CORRECT:
 ```
 
 **Database signature:**
+
 ```sql
 -- Check mean_type matches device_class expectations
 SELECT 
@@ -508,6 +748,7 @@ WHERE sm.mean_type IN (1, 2);
 A `total_increasing` counter shows negative state or sum values, which violates the monotonic increase constraint.
 
 **Causes:**
+
 - Sensor returned negative value due to hardware error
 - Template calculation error (e.g., subtraction instead of addition)
 - Database corruption
@@ -515,6 +756,7 @@ A `total_increasing` counter shows negative state or sum values, which violates 
 - Counter rollover with incorrect handling
 
 **Manifestation:**
+
 - Validation errors in Developer Tools → Statistics
 - Energy dashboard shows negative consumption
 - Bar charts with negative bars
@@ -522,6 +764,7 @@ A `total_increasing` counter shows negative state or sum values, which violates 
 - Impossible physical values (negative total energy consumed)
 
 **Example:**
+
 ```
 statistics table:
 | start_ts   | state  | sum    | Issue                    |
@@ -532,6 +775,7 @@ statistics table:
 ```
 
 **Database signature:**
+
 ```sql
 -- Find negative values in total_increasing sensors
 SELECT 
@@ -555,6 +799,7 @@ ORDER BY s.start_ts DESC;
 The `sum` field shows unrealistic jumps between periods that don't match the `state` values or expected consumption patterns.
 
 **Causes:**
+
 - Integration bug calculating sum incorrectly
 - Counter reset handled incorrectly (added instead of continuing)
 - Manual statistics import error
@@ -562,6 +807,7 @@ The `sum` field shows unrealistic jumps between periods that don't match the `st
 - Sensor sent burst of accumulated data
 
 **Manifestation:**
+
 - Energy dashboard shows impossible consumption spikes
 - Single hour shows years worth of consumption
 - Sum increases by 1000x normal amount
@@ -569,6 +815,7 @@ The `sum` field shows unrealistic jumps between periods that don't match the `st
 - Following periods return to normal rates
 
 **Example:**
+
 ```
 Hourly consumption pattern:
 10:00-11:00 → +2.5 kWh  [NORMAL]
@@ -578,6 +825,7 @@ Hourly consumption pattern:
 ```
 
 **Database signature:**
+
 ```sql
 -- Find abnormal sum increases (>10x average)
 WITH consumption AS (
@@ -617,6 +865,7 @@ LIMIT 100;
 Entries in `statistics_meta` table have no corresponding records in `statistics` or `statistics_short_term` tables.
 
 **Causes:**
+
 - Statistics were manually deleted but metadata wasn't
 - Purge operation incomplete or interrupted
 - Entity created but never generated statistics
@@ -624,12 +873,14 @@ Entries in `statistics_meta` table have no corresponding records in `statistics`
 - Statistics generation started but immediately failed
 
 **Manifestation:**
+
 - Metadata entries with zero statistics records
 - Wasted database space (minimal but clutters queries)
 - Confusion when querying metadata
 - Gaps between expected and actual statistics count
 
 **Example:**
+
 ```sql
 statistics_meta entry exists:
 | id | statistic_id              | unit | has_sum |
@@ -642,6 +893,7 @@ Result: 0  ← No statistics ever recorded!
 ```
 
 **Database signature:**
+
 ```sql
 -- Find orphaned metadata
 SELECT 
@@ -680,18 +932,21 @@ WHERE COALESCE(s_count.count, 0) = 0
 The `has_sum` and `mean_type` fields in `statistics_meta` have invalid combinations that violate statistics logic.
 
 **Causes:**
+
 - Database corruption
 - Manual SQL modification error
 - Statistics repair tool bug
 - Migration error from older HA versions
 
 **Manifestation:**
+
 - Validation errors in Developer Tools
 - Statistics compiler may skip these entities
 - Queries return unexpected results
 - Possible crashes in statistics-related UI
 
 **Valid combinations:**
+
 ```
 has_sum=0, mean_type=1  → Measurement (arithmetic)
 has_sum=0, mean_type=2  → Measurement (circular)
@@ -699,6 +954,7 @@ has_sum=1, mean_type=0  → Counter (no mean)
 ```
 
 **Invalid combinations:**
+
 ```
 has_sum=1, mean_type=1  ❌ Counter shouldn't have mean
 has_sum=1, mean_type=2  ❌ Counter shouldn't have circular mean
@@ -706,6 +962,7 @@ has_sum=0, mean_type=0  ❌ Measurement should have mean type
 ```
 
 **Database signature:**
+
 ```sql
 -- Find invalid has_sum / mean_type combinations
 SELECT 
@@ -735,10 +992,12 @@ WHERE NOT (
 ### Using Developer Tools
 
 **Settings → System → Repairs**
+
 - Automatic detection of some issues
 - One-click fixes for certain problems
 
 **Developer Tools → Statistics**
+
 - Shows all entities generating statistics
 - Validation warnings highlighted
 - "Fix issue" button for supported problems
@@ -750,6 +1009,7 @@ See the SQL queries provided in each error section above to detect specific issu
 ### Monitoring Logs
 
 Check `home-assistant.log` for warnings:
+
 ```
 WARNING (Recorder) [homeassistant.components.recorder.statistics] 
   Statistics for sensor.power_meter has a new unit kWh (old unit was Wh)
@@ -765,6 +1025,7 @@ WARNING (Recorder) [homeassistant.components.recorder.statistics]
 *(This section will cover solutions - would you like me to develop this section now with specific fixes for each error type?)*
 
 ### General Approaches
+
 - Using Developer Tools → Statistics repair
 - SQL UPDATE/DELETE commands
 - Statistics export, fix, and re-import
@@ -772,6 +1033,7 @@ WARNING (Recorder) [homeassistant.components.recorder.statistics]
 - Manual sum adjustment
 
 ### When to Fix vs. When to Start Fresh
+
 - Minor data gaps: Usually leave as-is
 - Duplicate entries: Must fix (causes DB corruption)
 - Unit changes: Migrate if possible
@@ -783,6 +1045,7 @@ WARNING (Recorder) [homeassistant.components.recorder.statistics]
 ## 5.4 Preventing Errors
 
 ### Best Practices
+
 1. **Validate before deploying**
    - Test sensor configuration in developer template tool
    - Check `state_class` matches data type

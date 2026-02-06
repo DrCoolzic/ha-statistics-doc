@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "elif",
+        "javascripts",
         "Koskila",
         "localtime",
         "postgresql",
@@ -16,6 +17,7 @@
         "unixepoch",
         "UNIXTIME",
         "urms",
-        "VARCHAR"
+        "VARCHAR",
+        "vitocal"
     ]
 }

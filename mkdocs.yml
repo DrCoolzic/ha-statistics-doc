@@ -10,6 +10,10 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
+  - javascripts/mermaid.js
+
 plugins:
   - search
 
@@ -21,6 +25,7 @@ nav:
       - Part 2 - Statistics Generation: doc/part2_statistics_generation.md
       - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
+      - Part 5 - Finding & Fixing Statistics Errors: doc/part5_find_fix.md
   - SQL Examples:
       - Overview: sql/sql_overview.md
       - Statistics: sql/sql_stat.md
@@ -30,5 +35,10 @@ nav:
 
 markdown_extensions:
   - admonition
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: true

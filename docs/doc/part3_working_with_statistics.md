@@ -53,7 +53,7 @@ For advanced analysis and custom integrations it can be useful to perform direct
 You will find some examples of queries in [SQL Section](../sql/sql_overview.md)
 For Python examples of querying statistics programmatically, see the [Home Assistant API documentation](https://developers.home-assistant.io/docs/api/rest/).
 
-### 3.4 External Statistics
+## 3.4 External Statistics
 
 Home Assistant also supports **external statistics** - data injected from sources outside the normal entity system. These have:
 
