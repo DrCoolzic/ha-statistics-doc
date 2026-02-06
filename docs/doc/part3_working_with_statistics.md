@@ -23,7 +23,7 @@ Short list of cards / Panels to display statistics
 - [Developer Tools](https://www.home-assistant.io/docs/tools/dev-tools/) → Statistics
   Shows all recorded statistics in a table and allow to fix some problems.
 - Energy Dashboard (for energy entities)
-- - [History panels](https://www.home-assistant.io/integrations/history/)
+- [History panels](https://www.home-assistant.io/integrations/history/)
   Display entity state changes over time. Automatically switches to statistics-based rendering for date ranges beyond the `states` table retention period.
 
 - [History graphs](https://www.home-assistant.io/dashboards/history-graph/)
@@ -52,8 +52,6 @@ For advanced analysis and custom integrations it can be useful to perform direct
 
 You will find some examples of queries in [SQL Section](../sql/sql_overview.md)
 For Python examples of querying statistics programmatically, see the [Home Assistant API documentation](https://developers.home-assistant.io/docs/api/rest/).
-
-Next - [Part 4_Best Practices and_Troubleshooting.md](part4_practices_troubleshooting.md)
 
 ### 3.4 External Statistics
 

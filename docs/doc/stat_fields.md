@@ -19,6 +19,7 @@ While most fields in Home Assistant's statistics tables are well documented, two
 **Purpose:** Tracks when HA's statistics compilation process wrote this particular record
 
 **Relationship to `start_ts`:**
+
 - `start_ts`: The **beginning** of the time period the statistics represent
 - `created_ts`: When the statistics **were calculated and written** to the database
 
@@ -145,10 +146,13 @@ The `mean_weight` helps track how many measurements contributed to each statisti
 ### Mean Type in statistics_meta
 
 The `statistics_meta` table has a `mean_type` field with values:
-- `0`: **Arithmetic mean** (default for normal sensors like temperature)
-- `1`: **Circular mean** (for angular measurements like wind direction)
+
+- `0`: **No mean** (Counters)
+- `1`: **Arithmetic mean** (default for normal sensors like temperature)
+- `2`: **Circular mean** (for angular measurements like wind direction)
 
 **Example from statistics_meta:**
+
 ```sql
 SELECT statistic_id, unit_of_measurement, mean_type 
 FROM statistics_meta 
@@ -156,6 +160,7 @@ WHERE statistic_id LIKE '%wind%bearing%';
 ```
 
 Result:
+
 ```
 sensor.wind_bearing    °    1  (Circular mean)
 ```

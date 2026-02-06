@@ -6,6 +6,7 @@
         "postgresql",
         "pymysql",
         "Pythonic",
+        "selectattr",
         "sessionmaker",
         "setpoints",
         "sinsts",

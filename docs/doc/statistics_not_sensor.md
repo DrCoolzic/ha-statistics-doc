@@ -36,6 +36,7 @@ input_number:
 ```
 
 Then customize it:
+
 ```yaml
 homeassistant:
   customize:
@@ -94,6 +95,7 @@ counter:
 ```
 
 Customize:
+
 ```yaml
 homeassistant:
   customize:
@@ -107,6 +109,7 @@ homeassistant:
 You can create template entities in various domains with statistics:
 
 ### Template Number with Statistics
+
 ```yaml
 template:
   - number:
@@ -120,6 +123,7 @@ template:
 ```
 
 ### Template Binary Sensor (State Duration)
+
 ```yaml
 template:
   - sensor:
@@ -195,7 +199,6 @@ Now you get statistics showing how often and how much you manually adjust temper
 
 ## Summary: Where Statistics Appear
 
-
 | Domain | Can Have Statistics? | Common Use |
 |--------|---------------------|------------|
 | `sensor` | ✅ Most common | Temperature, energy, power |
@@ -209,6 +212,7 @@ Now you get statistics showing how often and how much you manually adjust temper
 ## Key Takeaway
 
 **Any entity** with:
+
 - A numeric state
 - A `unit_of_measurement`
 - A `state_class` attribute

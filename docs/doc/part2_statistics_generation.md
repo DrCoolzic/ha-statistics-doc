@@ -27,6 +27,8 @@ Statistics are automatically generated for **entities** that meet certain criter
 
 Statistical entities can be classified into two categories: **measurement statistics** and **counter statistics**.
 
+> **TL;DR**: Measurement statistics track min/max/mean of current values (like temperature). Counter statistics track cumulative totals (like energy consumption). Choose `state_class` based on whether you want trends or totals.
+
 ### Measurement Type
 
 They represent a **measurement**
@@ -46,7 +48,7 @@ Home Assistant tracks the **min**, **max**, and **mean** values during each stat
 
 ### Measurement Subtypes
 
-The Counter Statistics type can be further divided into two subtypes
+The Measurement Statistics type can be further divided into two subtypes
 
 **1. `state_class: measurement`**
 
@@ -143,7 +145,7 @@ For entities with `state_class: measurement` or `measurement_angle`, Home Assist
 
 **Storage:**
 
-- In `statistics_meta`: `mean_type=1` (arithmetic), `has_sum=0`
+- In `statistics_meta`: `mean_type=1` (arithmetic), or `mean_type=2` (circular) and `has_sum=0`
 - In `statistics`/`statistics_short_term`: `mean`, `min`, `max` are populated; `state`, `sum` and `last_reset_ts` are NULL
 
 #### Arithmetic subtype
@@ -173,16 +175,16 @@ Angular measurements (like wind direction in degrees) require special handling b
 **Circular Mean Calculation:**
 
 1. Convert each angle θ to unit vectors:
-
    - x = cos(θ)
    - y = sin(θ)
-2. Calculate average vector components:
 
+2. Calculate average vector components:
    - mean_x = Σ(cos(θᵢ)) / n
    - mean_y = Σ(sin(θᵢ)) / n
-3. Convert back to angle:
 
+3. Convert back to angle:
    - mean = atan2(mean_y, mean_x)
+
 4. **Mean Weight**:
    - Stored as the length of the average vector: `sqrt(mean_x² + mean_y²)`
    - Range: 0 to 1
@@ -214,7 +216,7 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 
 #### Total subtype
 
-For entities with `state_class: total_increasing` (Monotonically Increasing)
+For entities with `state_class: total` (Monotonically Increasing)
 
 **Characteristics:**
 
@@ -247,7 +249,7 @@ For entities with `state_class: total_increasing` (Monotonically Increasing)
 
 #### Total_increasing subtype
 
-For entities with `state_class: total` (Can Increase or Decrease)
+For entities with `state_class: total_increasing` (Can Increase or Decrease)
 
 **Characteristics:**
 

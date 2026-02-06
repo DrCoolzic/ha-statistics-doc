@@ -79,11 +79,15 @@ Offers actionable guidance for configuring statistics correctly and resolving co
 
 Critical for ensuring your statistics configuration is correct and maintaining system performance over time.
 
+## [Quick Reference Guide](quick_refence_guide.md)
+
+## [Glossary](glossary.md)
+
 ## Conclusion
 
 Statistics in Home Assistant provide an efficient way to store and analyze long-term trends while managing storage constraints. By understanding the relationship between states, the recorder, and statistics generation, you can make informed decisions about what to track and how to optimize your system's performance.
 
-### Key Takeaways
+**Key Takeaways**
 
 1. States capture every change; statistics aggregate them efficiently
 2. State class determines how statistics are calculated
