@@ -284,7 +284,7 @@ Key attributes to include:
 
 ## 4.7 Common Mistakes to Avoid
 
-### ❌ Using state_class on non-numeric entities: 
+### ❌ Using state_class on non-numeric entities
 
 **Wrong**
 

@@ -3,9 +3,8 @@
 
 ## Retrieve measurement statistics between specific dates
 
-### MySQL version
-
 ```sql
+-- MySQL version
 SELECT 
     sm.statistic_id,
     CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) as period_start,
@@ -21,9 +20,8 @@ WHERE sm.statistic_id = 'sensor.family_temperature'
 ORDER BY s.start_ts ASC;
 ```
 
-### SQLite version
-
 ```sqlite
+-- SQLite version
 SELECT 
     sm.statistic_id,
     datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,

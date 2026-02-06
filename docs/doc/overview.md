@@ -79,7 +79,7 @@ Offers actionable guidance for configuring statistics correctly and resolving co
 
 Critical for ensuring your statistics configuration is correct and maintaining system performance over time.
 
-## [Quick Reference Guide](quick_refence_guide.md)
+## [Quick Reference Guide](quick_reference_guide.md)
 
 ## [Glossary](glossary.md)
 

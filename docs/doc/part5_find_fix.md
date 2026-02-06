@@ -69,18 +69,18 @@ ORDER BY gap_hours DESC
 LIMIT 50;
 ```
 
-| period | mean | gap_hours | gap_severity
-|---|---|---|---
-|2025-09-21 23:00:00.000000 | 25.717321462847288 | 456 | ⚠️ LARGE GAP (>2 hours)
-|2025-01-14 20:00:00.000000 | 18.87051401771877 | 228 | ⚠️ LARGE GAP (>2 hours)
-|2022-12-13 20:00:00.000000 | 23.57158472033553 | 147 | ⚠️ LARGE GAP (>2 hours)
-|2022-12-14 13:00:00.000000 | 20.547605773116427 | 11 | ⚠️ LARGE GAP (>2 hours)
-|2023-12-03 08:00:00.000000 | 19.8 | 9 | ⚠️ LARGE GAP (>2 hours)
-|2022-12-25 18:00:00.000000 | 20.300000000000004 | 9 | ⚠️ LARGE GAP (>2 hours)
-|2025-01-22 19:00:00.000000 | 17.69790881333039 | 7 | ⚠️ LARGE GAP (>2 hours)
-|2023-12-03 17:00:00.000000 | 19.725162957811452 | 3 | ⚠️ LARGE GAP (>2 hours)
-|2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED
-|2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED
+| period | mean | gap_hours | gap_severity |
+|---|---|---|---|
+|2025-09-21 23:00:00.000000 | 25.717321462847288 | 456 | ⚠️ LARGE GAP (>2 hours) |
+|2025-01-14 20:00:00.000000 | 18.87051401771877 | 228 | ⚠️ LARGE GAP (>2 hours) |
+|2022-12-13 20:00:00.000000 | 23.57158472033553 | 147 | ⚠️ LARGE GAP (>2 hours) |
+|2022-12-14 13:00:00.000000 | 20.547605773116427 | 11 | ⚠️ LARGE GAP (>2 hours) |
+|2023-12-03 08:00:00.000000 | 19.8 | 9 | ⚠️ LARGE GAP (>2 hours) |
+|2022-12-25 18:00:00.000000 | 20.300000000000004 | 9 | ⚠️ LARGE GAP (>2 hours) |
+|2025-01-22 19:00:00.000000 | 17.69790881333039 | 7 | ⚠️ LARGE GAP (>2 hours) |
+|2023-12-03 17:00:00.000000 | 19.725162957811452 | 3 | ⚠️ LARGE GAP (>2 hours) |
+|2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED |
+|2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED |
 
 **Database signature for counters:**
 
@@ -115,10 +115,10 @@ ORDER BY gap_seconds DESC
 LIMIT 50;
 ```
 
-| period              | counter_value | cumulative_sum | period_consumption | gap_hours | gap_severity   | impact                              |
-|---------------------|---------------|----------------|-------------------|-----------|----------------|-------------------------------------|
-| 2026-01-15 14:00:00 | 1250.5        | 1250.5         | NULL              | 6.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data        |
-| 2026-01-20 06:00:00 | 1305.2        | 1305.2         | NULL              | 3.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data        |
+| period              | counter_value | cumulative_sum | period_consumption | gap_hours | gap_severity   | impact |
+|---------------------|---------------|----------------|-------------------|-----------|----------------|--- |
+| 2026-01-15 14:00:00 | 1250.5        | 1250.5         | NULL              | 6.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data |
+| 2026-01-20 06:00:00 | 1305.2        | 1305.2         | NULL              | 3.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data |
 
 ```sql
 -- Version Showing gaps with before/after context - SQLite
@@ -152,10 +152,10 @@ ORDER BY gap_hours DESC
 LIMIT 50;
 ```
 
-| before_gap_ts | state_bef. | sum_bef. | gap_hour | first_record_after_gap | state_aft. | sum_aft. | sum_change | gap_impact                    |
-|------------------------|--------------|------------|-----------|------------------------|-------------|-----------|------------|-------------------------------|
-| 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap    |
-| 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded   |
+| before_gap_ts | state_bef. | sum_bef. | gap_hour | first_record_after_gap | state_aft. | sum_aft. | sum_change | gap_impact |
+|------------------------|--------------|------------|-----------|------------------------|-------------|-----------|------------|--- |
+| 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap |
+| 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
 
 ---
 
@@ -277,11 +277,11 @@ ORDER BY ABS(consumption / NULLIF(avg_24h_consumption, 1)) DESC
 LIMIT 50;
 ```
 
-| period              | counter_value | cumulative_sum | hourly_consumption | avg_24h | spike_multiplier | spike_status              | issue_description              |
-|---------------------|---------------|----------------|-------------------|---------|------------------|---------------------------|--------------------------------|
+| period              | counter_value | cumulative_sum | hourly_consumption | avg_24h | spike_multiplier | spike_status              | issue_description |
+|---------------------|---------------|----------------|-------------------|---------|------------------|---------------------------|-------------------|
 | 2026-01-15 13:00:00 | 1255.2        | 1255.2         | 2500.0            | 2.5     | 1000.0           | ❌ EXTREME SPIKE (>10x)  | Unrealistic consumption spike  |
-| 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2             | 2.3     | -19.7            | ❌ NEGATIVE consumption  | Counter decreased              |
-| 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5              | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)    |                                |
+| 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2             | 2.3     | -19.7            | ❌ NEGATIVE consumption  | Counter decreased |
+| 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5              | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)    | |
 
 ```sql
 -- Detect spike + recovery pattern (glitch signature) - SQLite (corrected)
@@ -346,14 +346,14 @@ ORDER BY period DESC
 LIMIT 50;
 ```
 
-| period              | state  | sum    | this_period | next_period | baseline_avg | glitch_pattern                | recommendation                      |
-|---------------------|--------|--------|-------------|-------------|--------------|-------------------------------|-------------------------------------|
-| 2026-01-15 13:00:00 | 1255.2 | 1255.2 | 2500.00     | -2480.00    | 2.50         | ❌ SPIKE + DROP GLITCH      | Manual correction needed            |
-| 2026-02-03 09:00:00 | 1580.5 | 1580.5 | 125.50      | 0.10        | 2.80         | ⚠️ SPIKE + very low         | Manual correction needed            |
+| period              | state  | sum    | this_period | next_period | baseline_avg | glitch_pattern                | recommendation |
+|---------------------|--------|--------|-------------|-------------|--------------|-------------------------------|----------------|
+| 2026-01-15 13:00:00 | 1255.2 | 1255.2 | 2500.00     | -2480.00    | 2.50         | ❌ SPIKE + DROP GLITCH      | Manual correction needed |
+| 2026-02-03 09:00:00 | 1580.5 | 1580.5 | 125.50      | 0.10        | 2.80         | ⚠️ SPIKE + very low         | Manual correction needed |
 
 ---
 
-TODO - Not checked below 
+TODO - Not checked below
 
 ### 5.1.3 Statistics on Deleted Entities
 
@@ -378,14 +378,13 @@ Statistics remain in the database for entities that no longer exist in Home Assi
 
 **Example:**
 
-```text
 statistics_meta table:
-| statistic_id                  | source   | unit | has_sum |
-|-------------------------------|----------|------|---------|
-| sensor.old_temperature        | recorder | °C   | 0       | ← Entity deleted
-| sensor.removed_power_meter    | recorder | W    | 0       | ← Integration removed
-| sensor.current_temperature    | recorder | °C   | 0       | ← Still exists ✓
-```
+
+| statistic_id                  | source   | unit | has_sum | |
+|-------------------------------|----------|------|---------| |
+| sensor.old_temperature        | recorder | °C   | 0       | ← Entity deleted |
+| sensor.removed_power_meter    | recorder | W    | 0       | ← Integration removed |
+| sensor.current_temperature    | recorder | °C   | 0       | ← Still exists |
 
 **Database signature:**
 
@@ -429,17 +428,16 @@ The sensor's unit of measurement changed, creating a new statistics series and d
 
 **Example:**
 
-```
 statistics_meta table:
-| id | statistic_id              | unit_of_measurement | has_sum |
-|----|---------------------------|---------------------|---------|
-| 42 | sensor.power_consumption  | Wh                  | 1       | ← Old (stopped 2025-12-01)
-| 89 | sensor.power_consumption  | kWh                 | 1       | ← New (started 2025-12-01)
-```
+
+| id | statistic_id              | unit_of_measurement | has_sum | source |
+|----|---------------------------|---------------------|---------|--------|
+| 42 | sensor.power_consumption  | Wh                  | 1       | recorder ← Old (stopped 2025-12-01) |
+| 89 | sensor.power_consumption  | kWh                 | 1       | recorder ← New (started 2025-12-01) |
 
 **Visual effect:**
 
-```
+```text
 Energy graph shows:
 Jan-Nov 2025: [███████████████] 15000 Wh total
 Dec 2025-Jan 2026: [No data shown] ← Actually exists but in different series
@@ -484,16 +482,15 @@ Entity was renamed, but statistics remain under the old `entity_id`, causing app
 
 **Example:**
 
-```
 Old: sensor.living_room_temperature
 New: sensor.lounge_temperature
 
 statistics_meta shows:
-| statistic_id                     | Last record       |
-|----------------------------------|-------------------|
-| sensor.living_room_temperature   | 2025-12-15        | ← All history here
-| sensor.lounge_temperature        | 2025-12-16 →      | ← New data here
-```
+
+| statistic_id                     | Last record       | |
+|----------------------------------|-------------------|---|
+| sensor.living_room_temperature   | 2025-12-15        | ← All history here |
+| sensor.lounge_temperature        | 2025-12-16 →      | ← New data here |
 
 **Database signature:**
 
@@ -544,12 +541,12 @@ Multiple statistics records exist for the same entity and time period, causing d
 ```sql
 SELECT * FROM statistics 
 WHERE metadata_id = 42 AND start_ts = 1735660800;
-
-| id    | metadata_id | start_ts   | mean  | sum   |
-|-------|-------------|------------|-------|-------|
-| 10001 | 42          | 1735660800 | 23.5  | NULL  | ← Duplicate!
-| 10023 | 42          | 1735660800 | 23.7  | NULL  | ← Duplicate!
 ```
+
+| id    | metadata_id | start_ts   | mean  | sum   | notes |
+|-------|-------------|------------|-------|-------|-------|
+| 10001 | 42          | 1735660800 | 23.5  | NULL  | ← Duplicate! |
+| 10023 | 42          | 1735660800 | 23.7  | NULL  | ← Duplicate! |
 
 **Database signature:**
 
@@ -591,7 +588,7 @@ The `state_class` attribute was changed (e.g., `measurement` → `total_increasi
 
 **Example:**
 
-```
+```text
 Before: state_class: measurement  → tracks mean/min/max
 After:  state_class: total_increasing → tracks sum
 
@@ -645,7 +642,7 @@ A `total_increasing` counter reset to zero, but the statistics system didn't det
 
 **Example:**
 
-```
+```text
 Counter readings:
 10:00 → state: 1250 kWh, sum: 1250 kWh
 11:00 → state: 1255 kWh, sum: 1255 kWh (+5 kWh consumption) ✓
@@ -702,7 +699,7 @@ Non-angular data is being processed with circular mean, or angular data with ari
 
 **Example:**
 
-```
+```text
 Wind Direction Sensor with mean_type=1 (arithmetic) - WRONG:
 0° + 350° + 340° = 690° / 3 = 230°  ← WRONG! (should be ~350°)
 
@@ -765,14 +762,13 @@ A `total_increasing` counter shows negative state or sum values, which violates 
 
 **Example:**
 
-```
 statistics table:
+
 | start_ts   | state  | sum    | Issue                    |
 |------------|--------|--------|--------------------------|
 | 1735574400 | 1250.5 | 1250.5 | OK                       |
 | 1735578000 | -5.2   | 1245.3 | ⚠️ Negative state value! |
 | 1735581600 | 8.7    | 1254.0 | Recovered                |
-```
 
 **Database signature:**
 
@@ -816,7 +812,7 @@ The `sum` field shows unrealistic jumps between periods that don't match the `st
 
 **Example:**
 
-```
+```text
 Hourly consumption pattern:
 10:00-11:00 → +2.5 kWh  [NORMAL]
 11:00-12:00 → +2.8 kWh  [NORMAL]
@@ -881,13 +877,15 @@ Entries in `statistics_meta` table have no corresponding records in `statistics`
 
 **Example:**
 
-```sql
 statistics_meta entry exists:
+
 | id | statistic_id              | unit | has_sum |
 |----|---------------------------|------|---------|
 | 99 | sensor.phantom_sensor     | kWh  | 1       |
 
 But querying statistics:
+
+```sql
 SELECT COUNT(*) FROM statistics WHERE metadata_id = 99;
 Result: 0  ← No statistics ever recorded!
 ```
@@ -947,7 +945,7 @@ The `has_sum` and `mean_type` fields in `statistics_meta` have invalid combinati
 
 **Valid combinations:**
 
-```
+```text
 has_sum=0, mean_type=1  → Measurement (arithmetic)
 has_sum=0, mean_type=2  → Measurement (circular)
 has_sum=1, mean_type=0  → Counter (no mean)
@@ -955,7 +953,7 @@ has_sum=1, mean_type=0  → Counter (no mean)
 
 **Invalid combinations:**
 
-```
+```text
 has_sum=1, mean_type=1  ❌ Counter shouldn't have mean
 has_sum=1, mean_type=2  ❌ Counter shouldn't have circular mean
 has_sum=0, mean_type=0  ❌ Measurement should have mean type
@@ -1010,7 +1008,7 @@ See the SQL queries provided in each error section above to detect specific issu
 
 Check `home-assistant.log` for warnings:
 
-```
+```text
 WARNING (Recorder) [homeassistant.components.recorder.statistics] 
   Statistics for sensor.power_meter has a new unit kWh (old unit was Wh)
   

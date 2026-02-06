@@ -1,5 +1,5 @@
 
-# TODO
+# TODO NOT YET READY
 
 ## **Why Home Assistant (and Python apps) Use SQLAlchemy**
 

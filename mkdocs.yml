@@ -26,10 +26,15 @@ nav:
       - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
       - Part 5 - Finding & Fixing Statistics Errors: doc/part5_find_fix.md
+      - Quick Reference Guide: doc/quick_reference_guide.md
+      - Glossary: doc/glossary.md
+      - Statistics Table Fields: doc/stat_fields.md
+      - Example of Statistics not sensor: doc/statistics_not_sensor.md
   - SQL Examples:
       - Overview: sql/sql_overview.md
-      - Statistics: sql/sql_stat.md
+      - Statistics: sql/sql_statistics.md
       - States: sql/sql_states.md
+      - Errors: sql/sql_errors.md
       - Tips: sql/sql_tips.md
       - Python: sql/sql_python.md
 

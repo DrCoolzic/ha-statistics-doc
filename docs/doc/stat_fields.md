@@ -26,7 +26,8 @@ While most fields in Home Assistant's statistics tables are well documented, two
 ### Practical Example
 
 For **hourly long-term statistics**:
-```
+
+```text
 start_ts:   1704970800  → 2024-01-11 12:00:00 (start of the hour being measured)
 created_ts: 1704974400  → 2024-01-11 13:00:00 (when HA compiled and wrote the stats)
 ```
@@ -34,7 +35,8 @@ created_ts: 1704974400  → 2024-01-11 13:00:00 (when HA compiled and wrote the 
 The statistics for the 12:00-13:00 period are typically written at or shortly after 13:00.
 
 For **5-minute short-term statistics**:
-```
+
+```text
 start_ts:   1704970800  → 2024-01-11 12:00:00
 created_ts: 1704971100  → 2024-01-11 12:05:00
 ```
@@ -42,13 +44,16 @@ created_ts: 1704971100  → 2024-01-11 12:05:00
 ### Why This Matters
 
 **Delayed Processing Detection:**
+
 If `created_ts` is significantly later than `start_ts + period_duration`, it indicates:
+
 - Home Assistant was restarted or offline
 - Database performance issues
 - Heavy system load delaying statistics compilation
 
 **Manual Data Insertion:**
 When manually inserting statistics (e.g., importing historical data), you must provide both timestamps:
+
 ```sql
 INSERT INTO statistics 
 (metadata_id, start_ts, created_ts, mean, min, max, state, sum)
@@ -60,8 +65,8 @@ VALUES
 
 To see both timestamps in human-readable format:
 
-**SQLite:**
 ```sql
+-- sqlite version
 SELECT 
     datetime(start_ts, 'unixepoch', 'localtime') as period_start,
     datetime(created_ts, 'unixepoch', 'localtime') as written_at,
@@ -71,8 +76,8 @@ WHERE metadata_id = 86
 ORDER BY start_ts DESC;
 ```
 
-**MySQL:**
 ```sql
+-- mysql version
 SELECT 
     FROM_UNIXTIME(start_ts) as period_start,
     FROM_UNIXTIME(created_ts) as written_at,
@@ -107,6 +112,7 @@ Note that older versions had `created` and `start` fields (DATETIME format) whic
 ### The Problem with Angular Measurements
 
 Consider wind direction readings:
+
 - Reading 1: 350° (almost North)
 - Reading 2: 10° (just past North)
 
@@ -125,6 +131,7 @@ This is why angular measurements need special handling.
 **Purpose:** Store weight factors for circular mean calculations
 
 **When Used:** Only for entities with angular/directional measurements:
+
 - Wind direction sensors (0-360°)
 - Compass bearings
 - Any circular/angular measurement
@@ -161,7 +168,7 @@ WHERE statistic_id LIKE '%wind%bearing%';
 
 Result:
 
-```
+```text
 sensor.wind_bearing    °    1  (Circular mean)
 ```
 
@@ -169,7 +176,7 @@ sensor.wind_bearing    °    1  (Circular mean)
 
 When the `mean_weight` field was added in HA 2025.4, some MySQL/MariaDB users encountered migration errors:
 
-```
+```text
 ALTER TABLE statistics_short_term ADD mean_weight DOUBLE PRECISION
 ```
 
@@ -180,6 +187,7 @@ This was due to InnoDB engine limitations with certain table options. The issue 
 For a wind direction sensor over one hour:
 
 **Individual readings (at 5-minute intervals):**
+
 - 12:00: 350°
 - 12:05: 355°
 - 12:10: 0°
@@ -194,14 +202,16 @@ For a wind direction sensor over one hour:
 - 12:55: 5°
 
 **Short-term statistics record (each 5-min period):**
-```
+
+```text
 start_ts: 1704970800
 mean: 1.2°  (circular mean of readings in this 5-min window)
 mean_weight: 12.0  (12 individual measurements contributed)
 ```
 
 **Long-term statistics (hourly aggregate):**
-```
+
+```text
 start_ts: 1704970800
 mean: 2.1°  (circular mean of all 12 short-term statistics)
 mean_weight: 144.0  (total of all measurements: 12 periods × 12 readings each)
@@ -210,6 +220,7 @@ mean_weight: 144.0  (total of all measurements: 12 periods × 12 readings each)
 ### When mean_weight is NULL
 
 For non-angular sensors (temperature, humidity, power, etc.), `mean_weight` remains `NULL` because:
+
 - They use arithmetic mean (mean_type = 0)
 - No circular averaging needed
 - Standard weighted average calculations apply
@@ -217,6 +228,7 @@ For non-angular sensors (temperature, humidity, power, etc.), `mean_weight` rema
 ### Querying Circular Mean Statistics
 
 **Find all sensors using circular mean:**
+
 ```sql
 SELECT sm.statistic_id, sm.unit_of_measurement, sm.mean_type
 FROM statistics_meta sm
@@ -224,6 +236,7 @@ WHERE sm.mean_type = 2;
 ```
 
 **Get wind direction statistics with weights:**
+
 ```sql
 SELECT 
     FROM_UNIXTIME(s.start_ts) as period,
@@ -241,6 +254,7 @@ ORDER BY s.start_ts DESC;
 ### Implementation References
 
 The circular mean implementation can be found in Home Assistant's core:
+
 - `homeassistant/components/sensor/recorder.py`
 - Statistics compilation uses circular statistics when `mean_type = 2`
 - Vector averaging with proper weight tracking
@@ -294,6 +308,7 @@ ORDER BY mean_type DESC, statistic_id;
 ### 3. Validating Imported Historical Data
 
 When importing historical statistics, ensure:
+
 - `created_ts` is reasonable (not in the future)
 - `created_ts` >= `start_ts`
 - For circular mean sensors, include `mean_weight` if available
@@ -306,7 +321,8 @@ When importing historical statistics, ensure:
 
 **Cause:** Sensor changed from arithmetic to circular mean after data was already collected
 
-**Solution:** 
+**Solution:**
+
 1. Check if entity should have circular mean: `SELECT * FROM statistics_meta WHERE statistic_id = 'sensor.your_wind_sensor'`
 2. If `mean_type = 1` but should be `2`, the integration needs to be updated
 3. Historical data may need recalculation or manual correction
@@ -321,7 +337,8 @@ When importing historical statistics, ensure:
 
 **Cause:** Home Assistant was offline, or statistics compilation was delayed
 
-**Impact:** 
+**Impact:**
+
 - Statistics are still valid
 - Indicates past system issues
 - May affect real-time dashboard updates
@@ -339,6 +356,7 @@ Both `created_ts` and `mean_weight` serve important but specialized purposes:
 - **`mean_weight`**: Enables proper statistical aggregation of angular measurements, solving the circular mean problem for wind direction and similar sensors
 
 Understanding these fields helps with:
+
 - Advanced database queries
 - Manual statistics manipulation
 - Troubleshooting statistics issues
@@ -349,7 +367,7 @@ Understanding these fields helps with:
 
 ## References
 
-1. Home Assistant Data Science Portal: https://data.home-assistant.io/docs/statistics/
+1. Home Assistant Data Science Portal: <https://data.home-assistant.io/docs/statistics/>
 2. GitHub Issue #142249: Mean type changes for circular sensors
 3. GitHub Issue #142408: mean_weight schema migration issues
-4. Home Assistant Database Schema: https://www.home-assistant.io/docs/backend/database/
+4. Home Assistant Database Schema: <https://www.home-assistant.io/docs/backend/database/>

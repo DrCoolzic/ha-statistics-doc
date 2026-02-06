@@ -1,10 +1,14 @@
 {
     "cSpell.words": [
         "elif",
+        "Inno",
         "javascripts",
+        "JULIANDAY",
         "Koskila",
         "localtime",
+        "montry",
         "postgresql",
+        "pymdownx",
         "pymysql",
         "Pythonic",
         "selectattr",
@@ -13,6 +17,7 @@
         "sinsts",
         "SMALLINT",
         "sqlalchemy",
+        "superfences",
         "tablename",
         "unixepoch",
         "UNIXTIME",

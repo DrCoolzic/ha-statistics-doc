@@ -1,11 +1,8 @@
-# TODO
-
----
-
-## SQL Examples
+# Dispatch to SQL Examples
 
 - [Overview](sql_overview.md)
-- [Statistics](sql_stat.md)
-- [States](sql_states.md)
-- [Tips](sql_tips.md)
-- [Python](sql_python.md)
+- [States Queries](sql_states.md)
+- [Statistics Queries](sql_statistics.md)
+- [Errors Queries](sql_errors.md)
+- [SQLTips](sql_tips.md)
+- [SQL Python](sql_python.md)
