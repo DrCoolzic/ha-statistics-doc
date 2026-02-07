@@ -1,4 +1,4 @@
-# Part 5: Finding & Fixing Statistics Errors
+# Part 5: Find & Fix Statistics Errors
 
 Over time, errors may appear in the statistical database for various reasons. This part describes the different types of errors, how to identify them, and methods to correct them.
 

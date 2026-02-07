@@ -79,6 +79,10 @@ Offers actionable guidance for configuring statistics correctly and resolving co
 
 Critical for ensuring your statistics configuration is correct and maintaining system performance over time.
 
+## [Part 5: Find & Fix Statistics Errors](part4_practices_troubleshooting.md)
+
+TODO Summary
+
 ## [Quick Reference Guide](quick_reference_guide.md)
 
 ## [Glossary](glossary.md)
