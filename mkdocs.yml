@@ -6,6 +6,8 @@ theme:
   name: material
   logo: assets/logo.svg
   favicon: assets/logo.svg
+  features:
+    - content.code.copy
 
 extra_css:
   - stylesheets/extra.css

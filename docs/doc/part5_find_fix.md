@@ -22,7 +22,8 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Orphaned Statistics Metadata](#512-orphaned-statistics-metadata) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) | ❌ |
 | [Mismatched Has_Sum and Mean_Type](#513-mismatched-has_sum-and-mean_type) | [mismatch_detect](#mismatch_detect) | [mismatch_fix](#mismatch_fix) | ❌ |
 
-Errors can be detected by using Developer Tools, SQL queries, or monitoring logs. Some errors can be fixed automatically, others require manual intervention. But the best practice is to prevent errors in the first place.
+Errors can be detected by using Developer Tools, SQL queries, or monitoring logs. Some errors can be fixed automatically, others require manual intervention.
+But the **best practice** is to prevent errors in the first place.
 
 1. **Validate before deploying**
    - Test sensor configuration in developer template tool
@@ -51,26 +52,27 @@ Errors can be detected by using Developer Tools, SQL queries, or monitoring logs
 
 ---
 
-Each error manifests differently in the UI and database. We are going to cover the most common errors in this document and provide information on how to fix them.
+Each error manifests differently in the UI and database. 
+We are going to cover the most common errors in this document and provide information on how to fix them.
 
 ---
 
-## 5.1 Missing Statistics
+## **5.1 Missing Statistics**
 
 [Description](#gap_description) | [Causes](#gap_causes) | [Manifestation](#gap_manifestation) | [Detection](#gap_detect) | [Fix](#gap_fix)
 
-<a id="gap_description"></a>**Description:**  
-Periods where no statistics were recorded despite the entity existing and presumably having data.
+<a id="gap_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+Periods where no statistics were recorded despite the entity existing and presumably having data. This is a common issue when the integration was not running or home assistant was shutdown.
 
-<a id="gap_causes"></a>**Causes:**
+<a id="gap_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Sensor/integration temporarily not delivering data (device offline, network issue)
+- Home Assistant was not running
 - Entity was excluded from recorder during that period
 - Statistics generation was disabled (`state_class` was temporarily removed)
-- Home Assistant was not running
 - Database write errors
 
-<a id="gap_manifestation"></a>**Missing Statistics Manifestation**
+<a id="gap_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Manifestation</span>
 
 **Measurement entities:**
 
@@ -88,35 +90,39 @@ Periods where no statistics were recorded despite the entity existing and presum
 
 ![Missing states](../assets/missing_states.png)
 
-<a id="gap_detect"></a>**Missing Statistics Detection**
+<a id="gap_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
 The SQL queries differs for [measurement](#gap_detect_measurement) and [counter](#gap_detect_counter) entities.
 
-<a id="gap_detect_measurement"></a> **Gap Detection for Measurement**
+<a id="gap_detect_measurement"></a>**Query for Measurement**
 
 ```sql
--- Check for gaps in measurement statistics
+-- Check for gaps in statistics - SQLite version
 -- Only shows rows with gaps (WHERE gap_seconds > 3600)
 -- Shows gap size in hours for easier reading
 -- Distinguishes between regular gaps (>1h) and large gaps (>2h)
 -- Sorts by largest gaps first (most problematic)
-SELECT 
-datetime(s1.start_ts, 'unixepoch', 'localtime') as gap_after_period,
-datetime(s2.start_ts, 'unixepoch', 'localtime') as gap_before_period,
-(s2.start_ts - s1.start_ts) / 3600.0 as gap_hours,
-s1.mean as last_value_before_gap,
-s2.mean as first_value_after_gap
-FROM statistics s1
-JOIN statistics s2 ON s2.metadata_id = s1.metadata_id 
-AND s2.start_ts = (
-    SELECT MIN(start_ts) 
-    FROM statistics 
-    WHERE metadata_id = s1.metadata_id 
-    AND start_ts > s1.start_ts
+WITH gap_analysis AS (
+  SELECT 
+    datetime(start_ts, 'unixepoch') as period,
+    mean,
+    start_ts,
+    LAG(start_ts) OVER (ORDER BY start_ts) as previous_ts,
+    start_ts - LAG(start_ts) OVER (ORDER BY start_ts) as gap_seconds
+  FROM statistics
+  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature_entree')
 )
-WHERE s1.metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature')
-AND (s2.start_ts - s1.start_ts) > 3600
-ORDER BY gap_hours DESC
+SELECT 
+  period,
+  mean,
+  gap_seconds / 3600.0 as gap_hours,
+  CASE 
+    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP (>2 hours)'
+    WHEN gap_seconds > 3600 THEN '⚠️ GAP DETECTED'
+  END as gap_severity
+FROM gap_analysis
+WHERE gap_seconds > 3600  -- Only show gaps > 1 hour
+ORDER BY gap_seconds DESC  -- Show largest gaps first
 LIMIT 50;
 ```
 
@@ -133,7 +139,7 @@ LIMIT 50;
 |2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED |
 |2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED |
 
-<a id="gap_detect_counter"></a> **Gap Detection for Counter**
+<a id="gap_detect_counter"></a>**Query for Counter**
 
 ```sql
 -- Check for gaps in counter statistics (only show gaps) - SQLite
@@ -208,20 +214,20 @@ LIMIT 50;
 | 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap |
 | 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
 
-<a id="gap_fix"></a>**Missing Statistics Fix**
+<a id="gap_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Missing Statistics Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.2 Invalid Data / Spikes
+<a id="52-invalid-data--spikes"></a>## **5.2 Invalid Data / Spikes**
 
 [Description](#spike_description) | [Causes](#spike_causes) | [Manifestation](#spike_manifestation) | [Detection](#spike_detect) | [Fix](#spike_fix)
 
-<a id="spike_description"></a>**Description:**  
+<a id="spike_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Statistics contain obviously wrong values due to sensor glitches, measurement errors, or data corruption.
 
-<a id="spike_causes"></a>**Causes:**
+<a id="spike_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Sensor hardware malfunction (reading errors)
 - Communication interference (corrupt packets)
@@ -230,7 +236,7 @@ Statistics contain obviously wrong values due to sensor glitches, measurement er
 - Power fluctuations affecting readings
 - No validation in template sensors
 
-<a id="spike_manifestation"></a>**Spike Manifestation**
+<a id="spike_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Manifestation</span>
 
 **Measurement entities:**
 
@@ -255,11 +261,11 @@ Temperature readings:
 
 ![counter spike](../assets/counter_spike.png)
 
-<a id="spike_detect"></a>**Spike Detection**
+<a id="spike_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Detection</span>
 
 The SQL queries differs for [measurement](#spike_detect_measurement) and [counter](#spike_detect_counter) entities.
 
-<a id="spike_detect_measurement"></a>**Spike Detection for Measurement**
+<a id="spike_detect_measurement"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Detection for Measurement</span>
 
 ```sql
 -- Find outliers (values > 3 standard deviations from mean)
@@ -285,7 +291,7 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 ORDER BY start_ts DESC;
 ```
 
-<a id="spike_detect_counter"></a>**Spike Detection for Counter**
+<a id="spike_detect_counter"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Detection for Counter</span>
 
 ```sql
 -- Find invalid spikes in counter statistics - SQLite
@@ -416,22 +422,20 @@ LIMIT 50;
 | 2026-01-15 13:00:00 | 1255.2 | 1255.2 | 2500.00     | -2480.00    | 2.50         | ❌ SPIKE + DROP GLITCH      | Manual correction needed |
 | 2026-02-03 09:00:00 | 1580.5 | 1580.5 | 125.50      | 0.10        | 2.80         | ⚠️ SPIKE + very low         | Manual correction needed |
 
-<a id="spike_fix"></a>**Spike Fix**
+<a id="spike_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-TODO - Not checked below
-
-## 5.3 Statistics on Deleted Entities
+## **5.3 Statistics on Deleted Entities**
 
 [Description](#deleted_description) | [Causes](#deleted_causes) | [Manifestation](#deleted_manifestation) | [Detection](#deleted_detect) | [Fix](#deleted_fix)
 
-<a id="deleted_description"></a>**Description:**  
+<a id="deleted_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Statistics remain in the database for entities that no longer exist in Home Assistant.
 
-<a id="deleted_causes"></a>**Causes:**
+<a id="deleted_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Entity was deleted or removed from configuration
 - Integration was uninstalled
@@ -439,7 +443,7 @@ Statistics remain in the database for entities that no longer exist in Home Assi
 - Entity ID was changed without migration
 - Statistics were not purged when entity was deleted
 
-<a id="deleted_manifestation"></a>**Deleted Entities Manifestation**
+<a id="deleted_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Deleted Entities Manifestation</span>
 
 - Statistics shown in Developer Tools → Statistics for non-existent entities
 - Orphaned `statistic_id` entries in `statistics_meta`
@@ -457,37 +461,45 @@ statistics_meta table:
 | sensor.removed_power_meter    | recorder | W    | 0       | ← Integration removed |
 | sensor.current_temperature    | recorder | °C   | 0       | ← Still exists |
 
-<a id="deleted_detect"></a>**Deleted Entities Detection**
+<a id="deleted_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
 ```sql
--- Find statistics for entities that no longer exist
--- (Requires manual verification against current entities)
+-- Find statistics for entities that no longer exist in Home Assistant
+-- indicates number of records attached to the deleted entity
 SELECT 
   sm.statistic_id,
   sm.source,
+  sm.unit_of_measurement,
   COUNT(s.id) as record_count,
   datetime(MIN(s.start_ts), 'unixepoch', 'localtime') as first_record,
   datetime(MAX(s.start_ts), 'unixepoch', 'localtime') as last_record
 FROM statistics_meta sm
 LEFT JOIN statistics s ON sm.id = s.metadata_id
+LEFT JOIN states_meta stm ON sm.statistic_id = stm.metadata_id
+WHERE stm.metadata_id IS NULL  -- Entity doesn't exist in states_meta
 GROUP BY sm.statistic_id
 ORDER BY last_record DESC;
 ```
 
-<a id="deleted_fix"></a>**Deleted Entities Fix**
+| statistic_id           | record_count | Issue |
+|------------------------|--------------|-------|
+| sensor.old_temperature | 8760         | ← Has lots of data |
+| sensor.failed_sensor   | 0            | ← Never generated data |
+
+<a id="deleted_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Deleted Entities Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.4 Unit of Measurement Changed
+## **5.4 Unit of Measurement Changed**
 
 [Description](#unit_description) | [Causes](#unit_causes) | [Manifestation](#unit_manifestation) | [Detection](#unit_detect) | [Fix](#unit_fix)
 
-<a id="unit_description"></a>**Description:**  
+<a id="unit_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 The sensor's unit of measurement changed, creating a new statistics series and discontinuity in data.
 
-<a id="unit_causes"></a>**Causes:**
+<a id="unit_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Sensor configuration was changed (e.g., Wh → kWh)
 - Integration updated with different default units
@@ -495,7 +507,7 @@ The sensor's unit of measurement changed, creating a new statistics series and d
 - Device firmware change
 - Template sensor modified
 
-<a id="unit_manifestation"></a>**Unit Changed Manifestation**
+<a id="unit_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Manifestation</span>
 
 - Two separate entries in `statistics_meta` for what should be one sensor
 - Different `statistic_id` entries (often with suffix like `_2`, `_3`)
@@ -520,7 +532,7 @@ Jan-Nov 2025: [███████████████] 15000 Wh total
 Dec 2025-Jan 2026: [No data shown] ← Actually exists but in different series
 ```
 
-<a id="unit_detect"></a>**Unit Changed Detection**
+<a id="unit_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Detection</span>
 
 ```sql
 -- Find duplicate statistic_id with different units
@@ -535,27 +547,27 @@ HAVING COUNT(*) > 1
 ORDER BY statistic_id;
 ```
 
-<a id="unit_fix"></a>**Unit Changed Fix**
+<a id="unit_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.5 Renamed Entities
+## **5.5 Renamed Entities**
 
 [Description](#renamed_description) | [Causes](#renamed_causes) | [Manifestation](#renamed_manifestation) | [Detection](#renamed_detect) | [Fix](#renamed_fix)
 
-<a id="renamed_description"></a>**Description:**  
+<a id="renamed_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Entity was renamed, but statistics remain under the old `entity_id`, causing apparent data loss.
 
-<a id="renamed_causes"></a>**Causes:**
+<a id="renamed_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Entity renamed via UI (Settings → Entities)
 - Entity ID changed in configuration.yaml
 - Integration reorganized entity IDs
 - Device renamed causing entity_id change
 
-<a id="renamed_manifestation"></a>**Renamed Entities Manifestation**
+<a id="renamed_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Manifestation</span>
 
 - Statistics exist for old entity_id but not new one
 - Historical data appears "missing" for renamed entity
@@ -575,7 +587,7 @@ statistics_meta shows:
 | sensor.living_room_temperature   | 2025-12-15        | ← All history here |
 | sensor.lounge_temperature        | 2025-12-16 →      | ← New data here |
 
-<a id="renamed_detect"></a>**Renamed Entities Detection**
+<a id="renamed_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Detection</span>
 
 ```sql
 -- Find statistics that might be renamed (similar names, one stopped, one started)
@@ -596,20 +608,20 @@ GROUP BY sm1.statistic_id, sm2.statistic_id
 ORDER BY time_gap_seconds;
 ```
 
-<a id="renamed_fix"></a>**Renamed Entities Fix**
+<a id="renamed_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.6 Duplicate Statistics
+## **5.6 Duplicate Statistics**
 
 [Description](#dup_description) | [Causes](#dup_causes) | [Manifestation](#dup_manifestation) | [Detection](#dup_detect) | [Fix](#dup_fix)
 
-<a id="dup_description"></a>**Description:**  
+<a id="dup_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Multiple statistics records exist for the same entity and time period, causing data integrity issues.
 
-<a id="dup_causes"></a>**Causes:**
+<a id="dup_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Database corruption
 - Import errors when migrating databases
@@ -617,7 +629,7 @@ Multiple statistics records exist for the same entity and time period, causing d
 - Statistics repair tool malfunction
 - Concurrent write conflicts
 
-<a id="dup_manifestation"></a>**Duplicate Statistics Manifestation**
+<a id="dup_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Manifestation</span>
 
 - Multiple records with identical `metadata_id` and `start_ts`
 - Inconsistent values shown in different UI views
@@ -637,7 +649,7 @@ WHERE metadata_id = 42 AND start_ts = 1735660800;
 | 10001 | 42          | 1735660800 | 23.5  | NULL  | ← Duplicate! |
 | 10023 | 42          | 1735660800 | 23.7  | NULL  | ← Duplicate! |
 
-<a id="dup_detect"></a>**Duplicate Statistics Detection**
+<a id="dup_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Detection</span>
 
 ```sql
 -- Find duplicate statistics
@@ -653,27 +665,27 @@ HAVING COUNT(*) > 1
 ORDER BY start_ts DESC;
 ```
 
-<a id="dup_fix"></a>**Duplicate Statistics Fix**
+<a id="dup_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.7 State Class Changed
+## **5.7 State Class Changed**
 
 [Description](#stclass_description) | [Causes](#stclass_causes) | [Manifestation](#stclass_manifestation) | [Detection](#stclass_detect) | [Fix](#stclass_fix)
 
-<a id="stclass_description"></a>**Description:**  
+<a id="stclass_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 The `state_class` attribute was changed (e.g., `measurement` → `total_increasing`), creating incompatible statistics.
 
-<a id="stclass_causes"></a>**Causes:**
+<a id="stclass_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Configuration error or experimentation
 - Integration update changed default state class
 - User misunderstanding of state_class purpose
 - Template sensor reconfiguration
 
-<a id="stclass_manifestation"></a>**State Class Changed Manifestation**
+<a id="stclass_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Manifestation</span>
 
 - New `statistic_id` may be created with suffix
 - Existing statistics may show validation warnings
@@ -693,7 +705,7 @@ Result:
 - Incompatible for merging or comparison
 ```
 
-<a id="stclass_detect"></a>**State Class Changed Detection**
+<a id="stclass_detect"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Detection</span>
 
 ```sql
 -- Detect potential state_class changes
@@ -713,20 +725,20 @@ WHERE sm1.has_sum != sm2.has_sum
   AND sm1.id != sm2.id;
 ```
 
-<a id="stclass_fix"></a>**State Class Changed Fix**
+<a id="stclass_fix"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.8 Counter Reset Not Detected
+## **5.8 Counter Reset Not Detected**
 
 [Description](#reset_description) | [Causes](#reset_causes) | [Manifestation](#reset_manifestation) | [Detection](#reset_detect) | [Fix](#reset_fix)
 
-<a id="reset_description"></a>**Description:**  
+<a id="reset_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 A `total_increasing` counter reset to zero, but the statistics system didn't detect it, resulting in negative or missing consumption data.
 
-<a id="reset_causes"></a>**Causes:**
+<a id="reset_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Reset was too small (< 10% threshold)
 - Counter decremented instead of resetting (hardware issue)
@@ -734,7 +746,7 @@ A `total_increasing` counter reset to zero, but the statistics system didn't det
 - Database wasn't updated with `last_reset` timestamp
 - Sensor temporarily reported unavailable during reset
 
-<a id="reset_manifestation"></a>**Counter Reset Manifestation**
+<a id="reset_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Counter Reset Manifestation</span>
 
 - Negative hourly consumption values in energy dashboard
 - Sum stops increasing or shows incorrect totals
@@ -754,7 +766,7 @@ Expected at 12:00: sum should handle reset gracefully
 Actual: sum froze, hourly consumption = 0
 ```
 
-<a id="reset_detect"></a>**Counter Reset Detection**
+<a id="reset_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Counter Reset Detection</span>
 
 ```sql
 -- Find potential missed resets
@@ -776,27 +788,27 @@ ORDER BY start_ts DESC
 LIMIT 50;
 ```
 
-<a id="reset_fix"></a>**Counter Reset Fix**
+<a id="reset_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Counter Reset Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.9 Wrong Mean Type (Circular vs Arithmetic)
+## **5.9 Wrong Mean Type (Circular vs Arithmetic)**
 
 [Description](#meantype_description) | [Causes](#meantype_causes) | [Manifestation](#meantype_manifestation) | [Detection](#meantype_detect) | [Fix](#meantype_fix)
 
-<a id="meantype_description"></a>**Description:**  
+<a id="meantype_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Non-angular data is being processed with circular mean, or angular data with arithmetic mean.
 
-<a id="meantype_causes"></a>**Causes:**
+<a id="meantype_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Incorrect `device_class` configuration
 - Template sensor without proper device_class
 - Integration bug assigning wrong device_class
 - Manual database modification error
 
-<a id="meantype_manifestation"></a>**Wrong Mean Type Manifestation**
+<a id="meantype_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Wrong Mean Type Manifestation</span>
 
 - Angular sensors show impossible mean values
   - Wind direction mean of 520° (should be 0-360°)
@@ -814,7 +826,7 @@ Wind Direction Sensor with mean_type=2 (circular) - CORRECT:
 0° + 350° + 340° → vectors → 350°  ← CORRECT!
 ```
 
-<a id="meantype_detect"></a>**Wrong Mean Type Detection**
+<a id="meantype_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Wrong Mean Type Detection</span>
 
 ```sql
 -- Check mean_type matches device_class expectations
@@ -844,20 +856,20 @@ FROM statistics_meta sm
 WHERE sm.mean_type IN (1, 2);
 ```
 
-<a id="meantype_fix"></a>**Wrong Mean Type Fix**
+<a id="meantype_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Wrong Mean Type Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.10 Negative Values in Total_Increasing
+## **5.10 Negative Values in Total_Increasing**
 
 [Description](#neg_description) | [Causes](#neg_causes) | [Manifestation](#neg_manifestation) | [Detection](#neg_detect) | [Fix](#neg_fix)
 
-<a id="neg_description"></a>**Description:**  
+<a id="neg_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 A `total_increasing` counter shows negative state or sum values, which violates the monotonic increase constraint.
 
-<a id="neg_causes"></a>**Causes:**
+<a id="neg_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Sensor returned negative value due to hardware error
 - Template calculation error (e.g., subtraction instead of addition)
@@ -865,7 +877,7 @@ A `total_increasing` counter shows negative state or sum values, which violates 
 - Manual statistics injection error
 - Counter rollover with incorrect handling
 
-<a id="neg_manifestation"></a>**Negative Values Manifestation**
+<a id="neg_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Negative Values Manifestation</span>
 
 - Validation errors in Developer Tools → Statistics
 - Energy dashboard shows negative consumption
@@ -883,7 +895,7 @@ statistics table:
 | 1735578000 | -5.2   | 1245.3 | ⚠️ Negative state value! |
 | 1735581600 | 8.7    | 1254.0 | Recovered                |
 
-<a id="neg_detect"></a>**Negative Values Detection**
+<a id="neg_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Negative Values Detection</span>
 
 ```sql
 -- Find negative values in total_increasing sensors
@@ -900,20 +912,20 @@ WHERE sm.has_sum = 1  -- Counter type
 ORDER BY s.start_ts DESC;
 ```
 
-<a id="neg_fix"></a>**Negative Values Fix**
+<a id="neg_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Negative Values Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.11 Large Unexpected Sum Jumps
+## **5.11 Large Unexpected Sum Jumps**
 
 [Description](#sumjump_description) | [Causes](#sumjump_causes) | [Manifestation](#sumjump_manifestation) | [Detection](#sumjump_detect) | [Fix](#sumjump_fix)
 
-<a id="sumjump_description"></a>**Description:**  
+<a id="sumjump_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 The `sum` field shows unrealistic jumps between periods that don't match the `state` values or expected consumption patterns.
 
-<a id="sumjump_causes"></a>**Causes:**
+<a id="sumjump_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Integration bug calculating sum incorrectly
 - Counter reset handled incorrectly (added instead of continuing)
@@ -921,7 +933,7 @@ The `sum` field shows unrealistic jumps between periods that don't match the `st
 - Data corruption during database migration
 - Sensor sent burst of accumulated data
 
-<a id="sumjump_manifestation"></a>**Sum Jumps Manifestation**
+<a id="sumjump_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Manifestation</span>
 
 - Energy dashboard shows impossible consumption spikes
 - Single hour shows years worth of consumption
@@ -939,7 +951,7 @@ Hourly consumption pattern:
 13:00-14:00 → +2.6 kWh  [NORMAL]
 ```
 
-<a id="sumjump_detect"></a>**Sum Jumps Detection**
+<a id="sumjump_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Detection</span>
 
 ```sql
 -- Find abnormal sum increases (>10x average)
@@ -972,20 +984,20 @@ ORDER BY start_ts DESC
 LIMIT 100;
 ```
 
-<a id="sumjump_fix"></a>**Sum Jumps Fix**
+<a id="sumjump_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.12 Orphaned Statistics Metadata
+## **5.12 Orphaned Statistics Metadata**
 
 [Description](#orphan_description) | [Causes](#orphan_causes) | [Manifestation](#orphan_manifestation) | [Detection](#orphan_detect) | [Fix](#orphan_fix)
 
-<a id="orphan_description"></a>**Description:**  
+<a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Entries in `statistics_meta` table have no corresponding records in `statistics` or `statistics_short_term` tables.
 
-<a id="orphan_causes"></a>**Causes:**
+<a id="orphan_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Statistics were manually deleted but metadata wasn't
 - Purge operation incomplete or interrupted
@@ -993,7 +1005,7 @@ Entries in `statistics_meta` table have no corresponding records in `statistics`
 - Database cleanup tools only cleaned data tables
 - Statistics generation started but immediately failed
 
-<a id="orphan_manifestation"></a>**Orphaned Metadata Manifestation**
+<a id="orphan_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Manifestation</span>
 
 - Metadata entries with zero statistics records
 - Wasted database space (minimal but clutters queries)
@@ -1015,7 +1027,7 @@ SELECT COUNT(*) FROM statistics WHERE metadata_id = 99;
 Result: 0  ← No statistics ever recorded!
 ```
 
-<a id="orphan_detect"></a>**Orphaned Metadata Detection**
+<a id="orphan_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Detection</span>
 
 ```sql
 -- Find orphaned metadata
@@ -1047,27 +1059,27 @@ WHERE COALESCE(s_count.count, 0) = 0
   AND COALESCE(ss_count.count, 0) = 0;
 ```
 
-<a id="orphan_fix"></a>**Orphaned Metadata Fix**
+<a id="orphan_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
-## 5.13 Mismatched Has_Sum and Mean_Type
+## **5.13 Mismatched Has_Sum and Mean_Type**
 
 [Description](#mismatch_description) | [Causes](#mismatch_causes) | [Manifestation](#mismatch_manifestation) | [Detection](#mismatch_detect) | [Fix](#mismatch_fix)
 
-<a id="mismatch_description"></a>**Description:**  
+<a id="mismatch_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 The `has_sum` and `mean_type` fields in `statistics_meta` have invalid combinations that violate statistics logic.
 
-<a id="mismatch_causes"></a>**Causes:**
+<a id="mismatch_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Database corruption
 - Manual SQL modification error
 - Statistics repair tool bug
 - Migration error from older HA versions
 
-<a id="mismatch_manifestation"></a>**Mismatched Fields Manifestation**
+<a id="mismatch_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Manifestation</span>
 
 - Validation errors in Developer Tools
 - Statistics compiler may skip these entities
@@ -1090,7 +1102,7 @@ has_sum=1, mean_type=2  ❌ Counter shouldn't have circular mean
 has_sum=0, mean_type=0  ❌ Measurement should have mean type
 ```
 
-<a id="mismatch_detect"></a>**Mismatched Fields Detection**
+<a id="mismatch_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Detection</span>
 
 ```sql
 -- Find invalid has_sum / mean_type combinations
@@ -1114,12 +1126,11 @@ WHERE NOT (
 );
 ```
 
-<a id="mismatch_fix"></a>**Mismatched Fields Fix**
+<a id="mismatch_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Fix</span>
 
 TODO PLACEHOLDER
 
 ---
 
 **Previous** - [Part 4: Best Practices and Troubleshooting](part4_practices_troubleshooting.md)
-
 

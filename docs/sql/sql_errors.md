@@ -5,28 +5,32 @@
 ### for measurements
 
 ```sql
--- SQLite version
+-- Check for gaps in statistics - SQLite version
 -- Only shows rows with gaps (WHERE gap_seconds > 3600)
 -- Shows gap size in hours for easier reading
 -- Distinguishes between regular gaps (>1h) and large gaps (>2h)
 -- Sorts by largest gaps first (most problematic)
+WITH gap_analysis AS (
+  SELECT 
+    datetime(start_ts, 'unixepoch') as period,
+    mean,
+    start_ts,
+    LAG(start_ts) OVER (ORDER BY start_ts) as previous_ts,
+    start_ts - LAG(start_ts) OVER (ORDER BY start_ts) as gap_seconds
+  FROM statistics
+  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature_entree')
+)
 SELECT 
-  datetime(s1.start_ts, 'unixepoch', 'localtime') as gap_after_period,
-  datetime(s2.start_ts, 'unixepoch', 'localtime') as gap_before_period,
-  (s2.start_ts - s1.start_ts) / 3600.0 as gap_hours,
-  s1.mean as last_value_before_gap,
-  s2.mean as first_value_after_gap
-FROM statistics s1
-JOIN statistics s2 ON s2.metadata_id = s1.metadata_id 
-  AND s2.start_ts = (
-    SELECT MIN(start_ts) 
-    FROM statistics 
-    WHERE metadata_id = s1.metadata_id 
-    AND start_ts > s1.start_ts
-  )
-WHERE s1.metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.e3_vitocal_boiler_supply_temperature')
-  AND (s2.start_ts - s1.start_ts) > 3600
-ORDER BY gap_hours DESC
+  period,
+  mean,
+  gap_seconds / 3600.0 as gap_hours,
+  CASE 
+    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP (>2 hours)'
+    WHEN gap_seconds > 3600 THEN '⚠️ GAP DETECTED'
+  END as gap_severity
+FROM gap_analysis
+WHERE gap_seconds > 3600  -- Only show gaps > 1 hour
+ORDER BY gap_seconds DESC  -- Show largest gaps first
 LIMIT 50;
 ```
 
