@@ -1,21 +1,52 @@
 # Part 5: Find & Fix Statistics Errors
 
-Over time, errors may appear in the statistical database for various reasons. This part describes the different types of errors, how to identify them, and methods to correct them.
+Over time, errors may appear in the statistical database for various reasons. This part describes the different types of errors, how to identify them, and methods to correct them. Understanding the error type is the first step toward fixing it.
 
----
+**Quick jump table**
 
-## 5.1 Types of Statistics Errors
+| Error Type | Detection | Fixable | Auto Fix |
+| --- | --- | --- | --- |
+| [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | ❌ | - |
+| [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | ✅ | manual |
 
-Understanding the error type is the first step toward fixing it. Each error manifests differently in the UI and database.
+Errors can be detected by using Developer Tools, SQL queries, or monitoring logs. Some errors can be fixed automatically, others require manual intervention. But the best practice is to prevent errors in the first place.
 
----
+1. **Validate before deploying**
+   - Test sensor configuration in developer template tool
+   - Check `state_class` matches data type
+   - Verify units before adding statistics
 
-### 5.1.1 Missing Statistics (Data Gaps)
+2. **Use availability templates**
+   - Filter out 'unavailable' and 'unknown' states
+   - Validate numeric values
+   - Prevent glitch propagation
 
-**Description:**  
+3. **Plan changes carefully**
+   - Don't change units mid-stream
+   - Rename entities via statistics migration tools
+   - Test state_class changes on non-production data
+
+4. **Regular monitoring**
+   - Check Developer Tools → Statistics weekly
+   - Review Settings → System → Repairs
+   - Monitor log files for warnings
+
+5. **Backup before modifications**
+   - Always backup `home-assistant_v2.db` before direct SQL
+   - Export critical statistics before migration
+   - Test fixes on database copy first
+
+Each error manifests differently in the UI and database. We are going to cover the most common errors in this document and provide information on how to fix them.
+
+## 5.1 Missing Statistics
+
+| [Description](#gap_description) | [Causes](#gap_causes) | [Manifestation](#gap_manifestation) | [Detection](#gap_detect) | [Fix](#gap_fix) |
+| --- | --- | --- | --- | --- |
+
+<a id="gap_description">**Description:**  
 Periods where no statistics were recorded despite the entity existing and presumably having data.
 
-**Causes:**
+<a id="gap_causes">**Causes:**
 
 - Sensor/integration temporarily not delivering data (device offline, network issue)
 - Entity was excluded from recorder during that period
@@ -23,7 +54,9 @@ Periods where no statistics were recorded despite the entity existing and presum
 - Home Assistant was not running
 - Database write errors
 
-**Manifestation for measurement entities:**
+<a id="gap_manifestation">**Missing Statistics Manifestation**
+
+**Measurement entities:**
 
 - Visible gaps/holes in history graphs
 - Flat lines where interpolation fails
@@ -31,17 +64,19 @@ Periods where no statistics were recorded despite the entity existing and presum
 
 ![Missing Temp](../assets/missing_temp.png)
 
-**Manifestation for counter entities:**
+**Counter entities:**
 
 - Missing bars in bar chart (energy dashboard)
-- Discontinuity in cumulative sum
+- Discontinuity in cumulative sum (A large variation crushes the values around it.)
 - Appears as zero consumption for that period
 
 ![Missing states](../assets/missing_states.png)
 
-As we can see huge peak hide normal values
+<a id="gap_detect"></a>**Missing Statistics Detection**
 
-**Database signature for measurements:**
+The SQL queries differs for [measurement](#gap_detect_measurement) and [counter](#gap_detect_counter) entities.
+
+<a id="gap_detect_measurement"></a> **Gap Detection for Measurement**
 
 ```sql
 -- Check for gaps in measurement statistics
@@ -82,7 +117,7 @@ LIMIT 50;
 |2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED |
 |2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED |
 
-**Database signature for counters:**
+<a id="gap_detect_counter"></a> **Gap Detection for Counter**
 
 ```sql
 -- Check for gaps in counter statistics (only show gaps) - SQLite
@@ -121,7 +156,7 @@ LIMIT 50;
 | 2026-01-20 06:00:00 | 1305.2        | 1305.2         | NULL              | 3.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data |
 
 ```sql
--- Version Showing gaps with before/after context - SQLite
+-- Version Showing gaps with before/after context
 -- This version shows the records before and after each gap for better context:
 SELECT 
   datetime(s1.start_ts, 'unixepoch', 'localtime') as last_record_before_gap,
@@ -157,9 +192,13 @@ LIMIT 50;
 | 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap |
 | 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
 
+<a id="gap_fix">**Missing Statistics Fix**
+
+TODO PLACEHOLDER
+
 ---
 
-### 5.1.2 Invalid Data / Spikes
+## 5.2 Invalid Data / Spikes
 
 **Description:**  
 Statistics contain obviously wrong values due to sensor glitches, measurement errors, or data corruption.
@@ -180,13 +219,6 @@ Statistics contain obviously wrong values due to sensor glitches, measurement er
 - Single extreme spikes followed by return to normal
 - Affects mean calculation for that period
 
-**Manifestation for counter entities:**
-
-- Massive positive spike followed by negative spike (or vice versa)
-- Sum jumps unrealistically high then drops back
-- Can trigger false counter reset detection
-- Creates artificial consumption peaks in energy dashboard
-
 ```text
 Temperature readings:
 12:00 → mean: 21.5°C, min: 21.2°C, max: 21.8°C  [NORMAL]
@@ -194,7 +226,20 @@ Temperature readings:
 14:00 → mean: 21.8°C, min: 21.6°C, max: 22.0°C  [BACK TO NORMAL]
 ```
 
-**Database signature for measurement:**
+**Manifestation for counter entities:**
+
+- Massive positive spike followed by negative spike (or vice versa)
+- Sum jumps unrealistically high then drops back
+- Can trigger false counter reset detection
+- Creates artificial consumption peaks in energy dashboard
+
+![counter spike](../assets/counter_spike.png)
+
+<a id="spike_detect"></a> **Database signature**
+
+The SQL queries differs for [measurement](#spike_detect_measurement) and [counter](#spike_detect_counter) entities.
+
+<a id="spike_detect_measurement"></a> **Gap Detection for Measurement**
 
 ```sql
 -- Find outliers (values > 3 standard deviations from mean)
@@ -220,7 +265,7 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 ORDER BY start_ts DESC;
 ```
 
-**Database signature for counter:**
+<a id="spike_detect_counter"></a> **Gap Detection for Counter**
 
 ```sql
 -- Find invalid spikes in counter statistics - SQLite
@@ -355,7 +400,7 @@ LIMIT 50;
 
 TODO - Not checked below
 
-### 5.1.3 Statistics on Deleted Entities
+## 5.3 Statistics on Deleted Entities
 
 **Description:**  
 Statistics remain in the database for entities that no longer exist in Home Assistant.
@@ -405,7 +450,7 @@ ORDER BY last_record DESC;
 
 ---
 
-### 5.1.4 Unit of Measurement Changed
+## 5.4 Unit of Measurement Changed
 
 **Description:**  
 The sensor's unit of measurement changed, creating a new statistics series and discontinuity in data.
@@ -460,7 +505,7 @@ ORDER BY statistic_id;
 
 ---
 
-### 5.1.5 Renamed Entities
+## 5.5 Renamed Entities
 
 **Description:**  
 Entity was renamed, but statistics remain under the old `entity_id`, causing apparent data loss.
@@ -515,7 +560,7 @@ ORDER BY time_gap_seconds;
 
 ---
 
-### 5.1.6 Duplicate Statistics
+## 5.6 Duplicate Statistics
 
 **Description:**  
 Multiple statistics records exist for the same entity and time period, causing data integrity issues.
@@ -566,7 +611,7 @@ ORDER BY start_ts DESC;
 
 ---
 
-### 5.1.7 State Class Changed
+## 5.7 State Class Changed
 
 **Description:**  
 The `state_class` attribute was changed (e.g., `measurement` → `total_increasing`), creating incompatible statistics.
@@ -620,7 +665,7 @@ WHERE sm1.has_sum != sm2.has_sum
 
 ---
 
-### 5.1.8 Counter Reset Not Detected
+## 5.8 Counter Reset Not Detected
 
 **Description:**  
 A `total_increasing` counter reset to zero, but the statistics system didn't detect it, resulting in negative or missing consumption data.
@@ -677,7 +722,7 @@ LIMIT 50;
 
 ---
 
-### 5.1.9 Wrong Mean Type (Circular vs Arithmetic)
+## 5.9 Wrong Mean Type (Circular vs Arithmetic)
 
 **Description:**  
 Non-angular data is being processed with circular mean, or angular data with arithmetic mean.
@@ -739,7 +784,7 @@ WHERE sm.mean_type IN (1, 2);
 
 ---
 
-### 5.1.10 Negative Values in Total_Increasing
+## 5.10 Negative Values in Total_Increasing
 
 **Description:**  
 A `total_increasing` counter shows negative state or sum values, which violates the monotonic increase constraint.
@@ -789,7 +834,7 @@ ORDER BY s.start_ts DESC;
 
 ---
 
-### 5.1.11 Large Unexpected Sum Jumps
+## 5.11 Large Unexpected Sum Jumps
 
 **Description:**  
 The `sum` field shows unrealistic jumps between periods that don't match the `state` values or expected consumption patterns.
@@ -855,7 +900,7 @@ LIMIT 100;
 
 ---
 
-### 5.1.12 Orphaned Statistics Metadata
+## 5.12 Orphaned Statistics Metadata
 
 **Description:**  
 Entries in `statistics_meta` table have no corresponding records in `statistics` or `statistics_short_term` tables.
@@ -924,7 +969,7 @@ WHERE COALESCE(s_count.count, 0) = 0
 
 ---
 
-### 5.1.13 Mismatched Has_Sum and Mean_Type
+## 5.13 Mismatched Has_Sum and Mean_Type
 
 **Description:**  
 The `has_sum` and `mean_type` fields in `statistics_meta` have invalid combinations that violate statistics logic.
@@ -985,101 +1030,8 @@ WHERE NOT (
 
 ---
 
-## 5.2 Detecting Errors
 
-### Using Developer Tools
-
-**Settings → System → Repairs**
-
-- Automatic detection of some issues
-- One-click fixes for certain problems
-
-**Developer Tools → Statistics**
-
-- Shows all entities generating statistics
-- Validation warnings highlighted
-- "Fix issue" button for supported problems
-
-### Using Database Queries
-
-See the SQL queries provided in each error section above to detect specific issues.
-
-### Monitoring Logs
-
-Check `home-assistant.log` for warnings:
-
-```text
-WARNING (Recorder) [homeassistant.components.recorder.statistics] 
-  Statistics for sensor.power_meter has a new unit kWh (old unit was Wh)
-  
-WARNING (Recorder) [homeassistant.components.recorder.statistics]
-  Detected duplicates for statistic_id sensor.energy_total
-```
-
----
-
-## 5.3 Fixing Statistics Errors
-
-*(This section will cover solutions - would you like me to develop this section now with specific fixes for each error type?)*
-
-### General Approaches
-
-- Using Developer Tools → Statistics repair
-- SQL UPDATE/DELETE commands
-- Statistics export, fix, and re-import
-- Entity renaming and metadata migration
-- Manual sum adjustment
-
-### When to Fix vs. When to Start Fresh
-
-- Minor data gaps: Usually leave as-is
-- Duplicate entries: Must fix (causes DB corruption)
-- Unit changes: Migrate if possible
-- Deleted entities: Clean up to save space
-- Renamed entities: Always migrate to preserve history
-
----
-
-## 5.4 Preventing Errors
-
-### Best Practices
-
-1. **Validate before deploying**
-   - Test sensor configuration in developer template tool
-   - Check `state_class` matches data type
-   - Verify units before adding statistics
-
-2. **Use availability templates**
-   - Filter out 'unavailable' and 'unknown' states
-   - Validate numeric values
-   - Prevent glitch propagation
-
-3. **Plan changes carefully**
-   - Don't change units mid-stream
-   - Rename entities via statistics migration tools
-   - Test state_class changes on non-production data
-
-4. **Regular monitoring**
-   - Check Developer Tools → Statistics weekly
-   - Review Settings → System → Repairs
-   - Monitor log files for warnings
-
-5. **Backup before modifications**
-   - Always backup `home-assistant_v2.db` before direct SQL
-   - Export critical statistics before migration
-   - Test fixes on database copy first
-
----
 
 **Previous** - [Part 4: Best Practices and Troubleshooting](part4_practices_troubleshooting.md)
 
----
 
-This is comprehensive but probably needs the "5.3 Fixing Statistics Errors" section fully developed with specific solutions. Would you like me to:
-
-1. Develop the complete Section 5.3 with specific fixes for each error type?
-2. Add SQL scripts for common fixes?
-3. Add examples of using the Developer Tools repair features?
-4. Create a troubleshooting decision tree diagram?
-
-Let me know what you'd like me to expand next!

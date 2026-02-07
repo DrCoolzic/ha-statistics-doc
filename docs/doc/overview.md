@@ -1,4 +1,4 @@
-# Understanding and Using Home Assistant Statistics
+# Understand and Use Home Assistant Statistics
 
 ## Who Should Read This Document
 

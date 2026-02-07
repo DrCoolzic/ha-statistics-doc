@@ -214,9 +214,9 @@ For entities with `state_class` set to `total` or `total_increasing`, Home Assis
 - Read from the entity's `last_reset` attribute
 - NULL for lifetime counters that never reset
 
-#### Total subtype
+#### Total_increasing subtype
 
-For entities with `state_class: total` (Monotonically Increasing)
+For entities with `state_class: total_increasing` (Monotonically Increasing)
 
 **Characteristics:**
 
@@ -247,9 +247,9 @@ For entities with `state_class: total` (Monotonically Increasing)
 14:00: state=72201200, sum=295880 (accumulated growth)
 ```
 
-#### Total_increasing subtype
+#### Total subtype
 
-For entities with `state_class: total_increasing` (Can Increase or Decrease)
+For entities with `state_class: total` (Can Increase or Decrease)
 
 **Characteristics:**
 
