@@ -374,4 +374,3 @@ Understanding these fields helps with:
 
 **Previous** - [Appendix 2: Changing Units](apdx_2_change_units.md)
 **Next** - [Appendix 4: Statistics Domains](apdx_4_stat_domains.md)
-

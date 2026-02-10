@@ -8,5 +8,7 @@ __pycache__/
 *.pyo
 *.pyd
 
+dcz/
+
 # MkDocs plugin/theme caches (common)
 .cache/

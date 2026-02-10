@@ -1,6 +1,8 @@
 
 # Changing Unit of Measurement
 
+THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED - Probably contains inaccurate information
+
 ## Overview
 
 Changing the unit of measurement for a sensor that already has statistics is one of the most confusing and problematic aspects of Home Assistant's statistics system. This section explains why the UI appears to offer a unit change feature that doesn't actually work, and provides tested solutions for properly changing units.
@@ -925,8 +927,8 @@ DELETE FROM statistics_meta WHERE id = 42;
 - [Part 2: Statistics Generation](part2_statistics_generation.md) - How statistics are created
 - [Part 4: Best Practices](part4_practices_troubleshooting.md) - Choosing state_class correctly
 - [Part 5: Finding & Fixing Errors](part5_find_fix.md)
+
 ---
 
 **Previous** - [Appendix 1: Setting Units](apdx_1_set_units.md)  
 **Next** - [Appendix 3: Mysterious Statistics fields](apdx_3_stat_fields.md)
-

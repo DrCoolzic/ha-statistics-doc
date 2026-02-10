@@ -1,5 +1,7 @@
 # Setting Units of Measurement
 
+THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED - Probably contains inaccurate information
+
 ## Overview
 
 Home Assistant has a complex system for determining what unit a sensor uses internally and what unit is displayed to the user. This system involves multiple layers: native units, suggested units, unit translation, user preferences, and statistics enforcement. Understanding this hierarchy is crucial for configuring sensors correctly and troubleshooting display issues.
@@ -12,7 +14,7 @@ Home Assistant has a complex system for determining what unit a sensor uses inte
 
 When a sensor is first created in Home Assistant, the system determines its internal unit through a precedence chain:
 
-```
+```text
 1. Sensor's unit_of_measurement property
    ↓ (if not set)
 2. Sensor's suggested_unit_of_measurement 
@@ -27,11 +29,13 @@ When a sensor is first created in Home Assistant, the system determines its inte
 #### 1. `native_unit_of_measurement`
 
 **What it is:**
+
 - The "raw" unit that the sensor/integration actually measures
 - The unit of the underlying hardware or data source
 - Cannot be changed without modifying integration code
 
 **Example:**
+
 ```python
 # In integration code (e.g., ESPHome component)
 class EnergySensor(SensorEntity):
@@ -49,11 +53,13 @@ class EnergySensor(SensorEntity):
 #### 2. `suggested_unit_of_measurement`
 
 **What it is:**
+
 - Integration's recommendation for display/storage unit
 - A "hint" to Home Assistant: "I report in X, but you might prefer Y"
 - Used for automatic unit conversion
 
 **Example:**
+
 ```python
 # In integration code
 class EnergySensor(SensorEntity):
@@ -67,6 +73,7 @@ class EnergySensor(SensorEntity):
 ```
 
 **Result:**
+
 - Home Assistant receives: 72500000 Wh (native)
 - Home Assistant stores in entity registry: kWh (suggested)
 - Home Assistant converts for display: 72500 kWh
@@ -77,11 +84,13 @@ class EnergySensor(SensorEntity):
 #### 3. `unit_of_measurement` (Explicit)
 
 **What it is:**
+
 - Direct specification of unit (bypasses native/suggested)
 - Used in YAML configurations, template sensors, etc.
 - Highest priority if explicitly set
 
 **Example:**
+
 ```yaml
 # Template sensor
 template:
@@ -97,7 +106,7 @@ template:
 
 When a sensor is first added:
 
-```
+```text
 Integration provides:
 ├── native_unit_of_measurement: "Wh"
 ├── suggested_unit_of_measurement: "kWh"
@@ -134,6 +143,7 @@ statistics_meta {
 ### What is Unit Translation?
 
 **Unit translation** is Home Assistant's ability to:
+
 - Store data in one unit internally
 - Display it in a different unit to the user
 - Automatically convert between compatible units
@@ -157,6 +167,7 @@ Home Assistant knows about unit families and can convert within them:
 | **Mass** | g, kg, mg, µg, oz, lb, st | 1000 g = 1 kg |
 
 **Requirements for translation:**
+
 1. ✅ Sensor must have `device_class` set
 2. ✅ Sensor must have `unique_id` (allows entity customization)
 3. ✅ Units must be in the same family
@@ -166,6 +177,7 @@ Home Assistant knows about unit families and can convert within them:
 #### Example: Energy Sensor
 
 **Integration configuration:**
+
 ```python
 # ESPHome sends Wh
 class EnergySensor(SensorEntity):
@@ -178,7 +190,7 @@ class EnergySensor(SensorEntity):
 
 **What happens:**
 
-```
+```text
 1. Hardware reports: 72500000 Wh (native)
    ↓
 2. HA sees suggested_unit_of_measurement: kWh
@@ -199,7 +211,8 @@ class EnergySensor(SensorEntity):
 Settings → Entities → sensor.energy_meter → ⚙️ → Unit of measurement → Select "MWh"
 
 **Result:**
-```
+
+```text
 Statistics still stored: 72500 (kWh scale)
    ↓
 HA converts for display: 72500 ÷ 1000 = 72.5 MWh
@@ -218,6 +231,7 @@ User sees: "72.5 MWh"
 **Timeline:**
 
 1. **Sensor added to HA:**
+
    ```yaml
    sensor:
      - platform: integration_name
@@ -226,6 +240,7 @@ User sees: "72.5 MWh"
    ```
 
 2. **Entity Registry created:**
+
    ```json
    {
      "entity_id": "sensor.power_meter",
@@ -241,6 +256,7 @@ User sees: "72.5 MWh"
    - ✅ **This works!** (no statistics yet to conflict)
 
 4. **Statistics created (after 5-10 min):**
+
    ```sql
    INSERT INTO statistics_meta (statistic_id, unit_of_measurement)
    VALUES ('sensor.power_meter', 'W');  -- Uses entity registry value
@@ -256,6 +272,7 @@ User sees: "72.5 MWh"
 **Timeline:**
 
 1. **Sensor already exists with statistics:**
+
    ```sql
    SELECT * FROM statistics_meta WHERE statistic_id = 'sensor.power_meter';
    
@@ -270,6 +287,7 @@ User sees: "72.5 MWh"
    - Click "Update"
 
 3. **Entity Registry updates:**
+
    ```json
    {
      "options": {
@@ -287,7 +305,8 @@ User sees: "72.5 MWh"
    - Entity registry change **ignored**!
 
 5. **Why?**
-   ```
+
+   ```text
    ┌─────────────────────────────────────┐
    │ statistics_meta.unit_of_measurement │
    │ Takes precedence over EVERYTHING    │
@@ -298,6 +317,7 @@ User sees: "72.5 MWh"
 ### Scenario C: Template Sensor with Unit Translation
 
 **Configuration:**
+
 ```yaml
 template:
   - sensor:
@@ -312,12 +332,14 @@ template:
 **User wants to see °F:**
 
 **Option 1: Via Entity Settings (if no statistics)**
+
 - Settings → Entities → sensor.outside_temperature → ⚙️
 - Change "Unit of measurement" to "°F"
 - ✅ Works if statistics don't exist yet
 - Display converts: 20°C → 68°F
 
 **Option 2: Via Template (always works)**
+
 ```yaml
 template:
   - sensor:
@@ -330,6 +352,7 @@ template:
 ```
 
 **Option 3: Customize (display only, doesn't affect statistics)**
+
 ```yaml
 homeassistant:
   customize:
@@ -338,6 +361,7 @@ homeassistant:
 ```
 
 ⚠️ **Warning:** Option 3 changes displayed unit but NOT the values!
+
 - If sensor reports 20°C
 - Customization shows "20 °F" ← Wrong! (Should be 68)
 - This is misleading and not recommended
@@ -362,6 +386,7 @@ template:
 ```
 
 **Control level:** ✅✅✅ Complete
+
 - You define unit
 - You perform conversion
 - You control statistics unit (indirectly)
@@ -378,6 +403,7 @@ sensor:
 ```
 
 **Control level:** ⚠️ Depends on integration
+
 - Check integration documentation
 - Not all integrations support this
 
@@ -386,6 +412,7 @@ sensor:
 Settings → Entities → [sensor] → ⚙️ → Unit of measurement
 
 **Control level:** ⚠️ Limited window
+
 - ✅ Works if sensor is new
 - ❌ Ignored once statistics exist
 - ⚠️ Timing-dependent
@@ -399,6 +426,7 @@ WHERE statistic_id = 'sensor.my_sensor';
 ```
 
 **Control level:** ✅ Effective but requires:
+
 - SQL knowledge
 - Database backup
 - Converting existing data
@@ -411,6 +439,7 @@ WHERE statistic_id = 'sensor.my_sensor';
 **Example: ESPHome sensor reports Wh**
 
 You cannot change this without:
+
 - Modifying ESPHome device configuration
 - Or using a template sensor to convert
 
@@ -425,6 +454,7 @@ Once `statistics_meta` has a unit, it's locked.
 #### 3. Device Class Behavior
 
 If `device_class: energy`, HA will:
+
 - Enforce energy unit family (Wh/kWh/MWh)
 - Reject incompatible units (e.g., °C)
 - Apply unit normalization rules
@@ -442,6 +472,7 @@ If `device_class: energy`, HA will:
 **Method A: Let Integration Handle It**
 
 ESPHome configuration:
+
 ```yaml
 sensor:
   - platform: pulse_counter
@@ -453,6 +484,7 @@ sensor:
 ```
 
 **Result:**
+
 - ESPHome sends: Wh
 - If integration has `suggested_unit_of_measurement: kWh`, HA converts automatically
 - Check if this happens by looking at Developer Tools → States
@@ -473,6 +505,7 @@ template:
 ```
 
 **Result:**
+
 - Original sensor: 72500 Wh
 - Template sensor: 72.5 kWh
 - Statistics for template sensor: Recorded in kWh
@@ -498,6 +531,7 @@ sensor:
 ```
 
 **Result:**
+
 - ESPHome sends to HA: kWh directly
 - No conversion needed in HA
 - ✅ Clean and efficient
@@ -533,6 +567,7 @@ template:
 ```
 
 Then (if no statistics exist yet):
+
 - Settings → Entities → sensor.room_temperature → ⚙️
 - Change unit to "°F"
 - HA will convert display automatically
@@ -556,6 +591,7 @@ template:
 ```
 
 **Result:**
+
 - Original: 2500 W
 - Template: 2.5 kW
 - Graphs show: 0-5 kW (much more readable than 0-5000 W)
@@ -575,6 +611,7 @@ utility_meter:
 ```
 
 ⚠️ **Don't do this:**
+
 ```yaml
 utility_meter:
   daily_energy:
@@ -628,10 +665,12 @@ Use this table to decide how to handle units:
 ### Problem: "Unit keeps changing back"
 
 **Symptoms:**
+
 - Set unit to Wh via entity settings
 - Restarts show kWh again
 
 **Diagnosis:**
+
 ```sql
 -- Check statistics metadata
 SELECT unit_of_measurement 
@@ -646,15 +685,18 @@ If this shows kWh, that's your answer.
 ### Problem: "Values don't match unit"
 
 **Symptoms:**
+
 - Unit shows "kWh"
 - But values like 72500 (should be ~72)
 
 **Diagnosis:**
+
 - Integration sending Wh
 - Display showing kWh label
 - No conversion happening
 
 **Check:**
+
 ```yaml
 # Developer Tools → States
 sensor.energy_meter:
@@ -679,6 +721,7 @@ template:
 ### Problem: "Can't select desired unit in dropdown"
 
 **Symptoms:**
+
 - Entity settings show unit dropdown
 - But desired unit not in list (e.g., want MWh, only see Wh/kWh)
 
@@ -687,6 +730,7 @@ template:
 **Solutions:**
 
 **Option 1:** Template sensor with explicit unit
+
 ```yaml
 template:
   - sensor:
@@ -699,6 +743,7 @@ template:
 ```
 
 **Option 2:** Remove device_class (if you don't need energy dashboard integration)
+
 ```yaml
 template:
   - sensor:
@@ -713,11 +758,13 @@ template:
 ### Problem: "Integration changed, now unit is wrong"
 
 **Symptoms:**
+
 - Integration updated
 - Now reports different unit
 - Old statistics incompatible
 
 **Example:**
+
 - Old version: Reported W
 - New version: Reports kW
 - Statistics: Still expect W
@@ -861,6 +908,7 @@ template:
 ```
 
 **Verify:**
+
 - Check Developer Tools → States
 - Verify unit shows correctly
 - Verify values are in correct scale
@@ -909,6 +957,7 @@ template:
 **"I'm creating a new sensor, what unit should I use?"**
 
 → Choose based on:
+
 - Utility bill compatibility (energy/water/gas)
 - Readability (avoid very large/small numbers)
 - Industry standards
@@ -917,12 +966,14 @@ template:
 **"I want to change an existing sensor's unit"**
 
 → Does it have statistics?
+
 - **No:** Try entity settings (may work)
 - **Yes:** See [Changing Units document]( apdx_2_change_units.md) (requires SQL or deletion)
 
 **"Integration reports wrong unit for me"**
 
 → Create template sensor with conversion:
+
 ```yaml
 template:
   - sensor:
@@ -934,6 +985,7 @@ template:
 **"I want multiple units displayed"**
 
 → Create multiple template sensors:
+
 ```yaml
 template:
   - sensor:

@@ -8,6 +8,7 @@
         "Koskila",
         "localtime",
         "meantype",
+        "mkdocs",
         "montry",
         "orphmeta",
         "postgresql",
@@ -26,6 +27,7 @@
         "UNIXTIME",
         "urms",
         "VARCHAR",
+        "venv",
         "vitocal",
         "zigbee"
     ]

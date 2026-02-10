@@ -14,9 +14,9 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) |
 | [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) |
 | [Counter Reset Not Detected](#56-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) |
-| [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) | ❌ |
-| [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) | ❌ |
-| [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) | ❌ |
+| [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) |
+| [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) |
+| [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) |
 
 Errors can be detected by using Developer Tools, SQL queries, or monitoring logs... Some errors can be fixed automatically, others require manual intervention. But the **best practice** is to prevent errors in the first place.
 
