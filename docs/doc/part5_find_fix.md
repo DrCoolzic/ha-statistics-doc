@@ -6,14 +6,14 @@ Over time, errors may appear in the statistical database for various reasons. Th
 
 **Quick jump table**
 
-| Error Type | Detection | Fix | Auto Fix |
-| --- | --- | --- | --- |
-| [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | [gap_fix](#gap_fix) | ❌ |
-| [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | [spike_fix](#spike_fix) | ✅ manual |
-| [Statistics on Deleted Entities](#53-statistics-on-deleted-entities) | [deleted_detect](#deleted_detect) | [deleted_fix](#deleted_fix) | ❌ |
-| [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) | ❌ |
-| [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) | ✅ manual |
-| [Counter Reset Not Detected](#56-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) | ❌ |
+| Error Type | Detection | Fix |
+| --- | --- | --- |
+| [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | [gap_fix](#gap_fix) |
+| [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | [spike_fix](#spike_fix) |
+| [Statistics on Deleted Entities](#53-statistics-on-deleted-entities) | [deleted_detect](#deleted_detect) | [deleted_fix](#deleted_fix) |
+| [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) |
+| [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) |
+| [Counter Reset Not Detected](#56-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) |
 | [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) | ❌ |
 | [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) | ❌ |
 | [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) | ❌ |
