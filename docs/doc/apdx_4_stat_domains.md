@@ -1,4 +1,4 @@
-# Real-world examples of statistics from non-sensor domains
+# Examples of statistics from non-sensor domains
 
 This document provides real-world examples of how statistics can be generated from non-sensor domains in Home Assistant.
 

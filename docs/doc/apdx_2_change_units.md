@@ -1,5 +1,5 @@
 
-# Understanding Unit of Measurement Changes in Home Assistant Statistics
+# Changing Unit of Measurement
 
 ## Overview
 
@@ -924,9 +924,9 @@ DELETE FROM statistics_meta WHERE id = 42;
 - [Part 1: Foundational Concepts](part1_fundamental_concepts.md) - Understanding states vs statistics
 - [Part 2: Statistics Generation](part2_statistics_generation.md) - How statistics are created
 - [Part 4: Best Practices](part4_practices_troubleshooting.md) - Choosing state_class correctly
-- [Part 5: Finding & Fixing Errors](part5_finding_fixing_errors.md) - Other common statistics issues
-
+- [Part 5: Finding & Fixing Errors](part5_find_fix.md)
 ---
 
-**Previous** - [Part X: ...](partX.md)  
-**Next** - [Part Y: ...](partY.md)
+**Previous** - [Appendix 1: Setting Units](apdx_1_set_units.md)  
+**Next** - [Appendix 3: Mysterious Statistics fields](apdx_3_stat_fields.md)
+

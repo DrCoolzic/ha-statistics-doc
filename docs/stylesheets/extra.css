@@ -58,3 +58,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Use full page width */
+.md-grid {
+  max-width: 100%;
+}
+
+/* Give more room to the main content area */
+.md-content {
+  max-width: none;
+}
+

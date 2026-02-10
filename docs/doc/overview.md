@@ -79,9 +79,20 @@ Offers actionable guidance for configuring statistics correctly and resolving co
 
 Critical for ensuring your statistics configuration is correct and maintaining system performance over time.
 
-## [Part 5: Find & Fix Statistics Errors](part4_practices_troubleshooting.md)
+## [Part 5: Find & Fix Statistics Errors](part5_find_fix.md)
 
-TODO Summary
+A comprehensive guide to identifying and correcting errors in the statistics database. Each error type is documented with its causes, manifestation, detection queries, and step-by-step fix instructions. Covers:
+
+- Missing statistics (data gaps) due to downtime, sensor unavailability, or recorder issues
+- Invalid data and spikes from sensor glitches or transmission errors
+- Statistics on deleted or orphaned entities cluttering the database
+- Renamed entities causing split or orphaned statistics
+- Counter reset detection failures leading to incorrect cumulative sums
+- Wrong mean type (circular vs arithmetic) for angular sensors
+- Negative values in total_increasing counters
+- Orphaned statistics metadata with no associated data
+
+Each section includes SQL detection queries and detailed fix procedures with examples. Essential for maintaining clean, accurate long-term statistics data.
 
 ## [Quick Reference Guide](quick_reference_guide.md)
 

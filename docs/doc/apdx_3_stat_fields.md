@@ -1,4 +1,4 @@
-# Statistics Table Fields: `created_ts` and `mean_weight`
+# MysteriousStatistics Fields: `created_ts` and `mean_weight`
 
 ## Overview
 
@@ -371,3 +371,7 @@ Understanding these fields helps with:
 2. GitHub Issue #142249: Mean type changes for circular sensors
 3. GitHub Issue #142408: mean_weight schema migration issues
 4. Home Assistant Database Schema: <https://www.home-assistant.io/docs/backend/database/>
+
+**Previous** - [Appendix 2: Changing Units](apdx_2_change_units.md)
+**Next** - [Appendix 4: Statistics Domains](apdx_4_stat_domains.md)
+

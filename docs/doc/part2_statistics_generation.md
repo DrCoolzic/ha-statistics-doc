@@ -23,7 +23,7 @@ This dramatically reduces storage requirements while preserving trend data.
 
 Statistics are automatically generated for **entities** that meet certain criteria. While most statistical entities are in the `sensor` domain, ANY entity with an appropriate `state_class` can generate statistics, regardless of domain (e.g. number, input_number, counter,...)
 
-> For example of statistics from non-sensor domains see [Non-sensor Examples](statistics_not_sensor.md)
+> For example of statistics from non-sensor domains see [Statistics domains](apdx_4_stat_domains.md)
 
 Statistical entities can be classified into two categories: **measurement statistics** and **counter statistics**.
 
@@ -473,7 +473,7 @@ We only show the fields that are in use at the time of this writing. Other field
 | `state`         | Last known state at end of period                               | 235.0 (final voltage reading)       |
 | `sum`           | Cumulative sum (for counters like energy)                       | 1523.4 (total kWh)                  |
 
-> See [statistics fields documentation](stat_fields.md) for a detailed description of the fields `mean_weight`, and `created_ts`
+> See [Mysterious Statistics Fields](apdx_3_stat_fields.md) for a detailed description of the fields `mean_weight`, and `created_ts`
 
 ### statistics_short_term table
 

@@ -24,18 +24,16 @@ Short list of cards / Panels to display statistics
   Shows all recorded statistics in a table and allow to fix some problems.
 - Energy Dashboard (for energy entities)
 - [History panels](https://www.home-assistant.io/integrations/history/)
-  Display entity state changes over time. Automatically switches to statistics-based rendering for date ranges beyond the `states` table retention period.
-
+  Display entity state changes over time by reading information from the states table. Automatically switches to statistics-based rendering for date ranges beyond the `states` table retention period.
 - [History graphs](https://www.home-assistant.io/dashboards/history-graph/)
-  Is used to display **measurement** type statistics. It uses short term statistics to show detailed information (5 minutes sampling) during the retention period and long term statistic (1 hour sampling) for longer period.
+  Is used to display **measurement** type statistics. It uses the sates table to show detailed information during the retention period and automatically switches to long term statistic for longer period.
   ![measurement](../assets/history_graph.png)
 - [Statistics graph card](https://www.home-assistant.io/dashboards/statistics-graph)
-  Uses long term statistics to display **measurement** or **counter** type statistics.
-  
+  uses info from the long term statistic table to display **measurement** or **counter** type statistics.
   For **measurement** it can display the min, max, and mean information. In this case the chart type is usually set to line
-  ![measurement](../assets/measure_stat.png)
-  
+  ![measurement](../assets/measure_stat.png)  
   For **counter** it can display the state, sum, and delta change. To display change the chart type is usually set to bar and for sum it is set to line. Note that the sum displayed in period is not what is stored in the table as it always start at 0. This allow to more easily  read the consumption over the period.
+
   ![counter_change](../assets/counter_change.png) ![counter_sum](../assets/counter_sum.png)
   
 - And many custom card
@@ -68,4 +66,4 @@ External statistics are useful for:
 - Forecast data from external services
 
 **Previous** - [Part 2: Statistics Generation](part2_statistics_generation.md)
-**Next** - [Part 4_Best Practices and_Troubleshooting.md](part4_practices_troubleshooting.md)
+**Next** - [Part 4 Best Practices and Troubleshooting.md](part4_practices_troubleshooting.md)
