@@ -11,7 +11,7 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | [gap_fix](#gap_fix) | ❌ |
 | [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | [spike_fix](#spike_fix) | ✅ manual |
 | [Statistics on Deleted Entities](#53-statistics-on-deleted-entities) | [deleted_detect](#deleted_detect) | [deleted_fix](#deleted_fix) | ❌ |
-| [Unit of Measurement Changed](#54-unit-of-measurement-changed) | [unit_detect](#unit_detect) | [unit_fix](#unit_fix) | ✅ manual |
+| [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) | ❌ |
 | [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) | ✅ manual |
 | [Duplicate Statistics](#56-duplicate-statistics) | [dup_detect](#dup_detect) | [dup_fix](#dup_fix) | ❌ |
 | [State Class Changed](#57-state-class-changed) | [stclass_detect](#stclass_detect) | [stclass_fix](#stclass_fix) | ❌ |
@@ -19,7 +19,7 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Wrong Mean Type](#59-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) | ❌ |
 | [Negative Values in Total_Increasing](#510-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) | ❌ |
 | [Large Unexpected Sum Jumps](#511-large-unexpected-sum-jumps) | [sumjump_detect](#sumjump_detect) | [sumjump_fix](#sumjump_fix) | ❌ |
-| [Orphaned Statistics Metadata](#512-orphaned-statistics-metadata) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) | ❌ |
+| [Orphaned Statistics Metadata](#512-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) | ❌ |
 | [Mismatched Has_Sum and Mean_Type](#513-mismatched-has_sum-and-mean_type) | [mismatch_detect](#mismatch_detect) | [mismatch_fix](#mismatch_fix) | ❌ |
 
 Errors can be detected by using Developer Tools, SQL queries, or monitoring logs. Some errors can be fixed automatically, others require manual intervention.
@@ -54,6 +54,11 @@ But the **best practice** is to prevent errors in the first place.
 
 Each error manifests differently in the UI and database. 
 We are going to cover the most common errors in this document and provide information on how to fix them.
+
+>**Note** "Unit of Measurement Changes"
+    Unit selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
+    [Appendix 1: How HA Selects and Displays Units](Apdx1_set_units.md) and
+    [Appendix 2: Changing Units of Measurement](apdx2_change_units.md).
 
 ---
 
@@ -492,18 +497,57 @@ TODO PLACEHOLDER
 
 ---
 
-## **5.x Orphan Entities** TODO bump number below
+## **5.4 Statistics on Orphaned Entities**
+
+[Description](#orphan_description) | [Causes](#orphan_causes) | [Manifestation](#orphan_manifestation) | [Detection](#orphan_detect) | [Fix](#orphan_fix)
 
 <a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-Orphaned entities are entities that are no longer claimed by an integration. This can happen when an integration is removed or when an integration is no longer working. Home Assistant considers an entity only orphaned if it has been unclaimed since the last restart of Home Assistant.
+Orphaned entities are entities that exist in the database but are no longer claimed by any active integration. Unlike deleted entities (section 5.3) where the entity record is completely removed, orphaned entities remain in the `states_meta` table in a "zombie" state — still present but disconnected from any working integration.
 
-TODO ...
+Home Assistant considers an entity orphaned only after it has been unclaimed since the last restart. At restart, HA checks whether each entity is still claimed by an integration. If not, it writes a final state record with `state = NULL` to the `states` table, effectively marking the entity as orphaned.
+
+Orphan statistics are the statistics records associated with these orphaned entities. They are typically not useful to retain because the source integration is no longer providing data and the entity will never receive new state updates.
+
+<a id="orphan_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
+
+- Integration was removed or uninstalled
+- Integration is broken or no longer loading
+- Device was physically disconnected and removed from the integration
+- Integration was disabled in Settings → Devices & Services
+- HACS custom integration was uninstalled
+- Entity was created by an automation/script that no longer exists
+- Hardware failure on a device (e.g., Zigbee device died) and device was removed
+
+<a id="orphan_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Manifestation</span>
+
+- Entity appears in Settings → Entities with state "unavailable" or "unknown" persistently
+- After a restart, entity state becomes `NULL` in the database
+- Statistics continue to exist in `statistics_meta` and `statistics` tables but no new data is generated
+- Entity may still appear in energy dashboard or history graphs with stale data
+- Developer Tools → Statistics shows the entity but with no recent records
+- Wasted database space from historical statistics that cannot be correlated with current system state
+- Confusing entries when querying statistics or browsing entity lists
+
+**Example:**
+
+After removing a Zigbee power meter integration and restarting HA:
+
+| Table | Entry | State |
+|-------|-------|-------|
+| `states_meta` | `sensor.zigbee_power` | exists |
+| `states` (latest) | `sensor.zigbee_power` | `NULL` ← marked orphaned at restart |
+| `statistics_meta` | `sensor.zigbee_power` | exists (has_sum=1) |
+| `statistics` | `sensor.zigbee_power` | 8760 records ← historical data, no new data coming |
 
 <a id="orphan_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
-TODO REWRITE properly: Seems like at restart HA has a way to detect orphan (?). Based on this information it updates the states table by setting it to NULL. Therefore the way to detect orphan it to see entities with NULL state. The following query is performance optimized :)
+Since HA marks orphaned entities with `state = NULL` at restart (see Description above), the detection method is: **find entities whose most recent state is NULL**, then check if they have associated statistics records.
+
+The query below uses a subquery to find the latest `state_id` for each entity, ensuring we only check the most recent state. It then joins with `statistics_meta` and `statistics` to show how many statistics records are associated with each orphaned entity.
 
 ```sql
+-- Find orphaned entities that have associated statistics
+-- An orphaned entity has NULL as its most recent state (set by HA at restart)
 SELECT stm.entity_id,
        st.state,
        datetime(st.last_updated_ts, 'unixepoch') as last_updated,
@@ -514,67 +558,18 @@ JOIN states st ON stm.metadata_id = st.metadata_id
 LEFT JOIN statistics_meta sm ON stm.entity_id = sm.statistic_id
 LEFT JOIN statistics s ON sm.id = s.metadata_id
 WHERE st.state IS NULL
-  AND st.state_id = (SELECT state_id FROM states WHERE metadata_id = stm.metadata_id ORDER BY last_updated_ts DESC LIMIT 1)
+  AND st.state_id = (
+    SELECT state_id FROM states 
+    WHERE metadata_id = stm.metadata_id 
+    ORDER BY last_updated_ts DESC LIMIT 1
+  )
 GROUP BY stm.entity_id, st.state, st.last_updated_ts, sm.statistic_id
 ORDER BY st.last_updated_ts DESC;
 ```
 
-## **5.4 Unit of Measurement Changed**
+The `statistics_count` column shows how many long-term statistics records exist for each orphaned entity. Entities with `statistic_id = NULL` and `statistics_count = 0` are orphaned but have no statistics — they can be safely ignored in this context.
 
-[Description](#unit_description) | [Causes](#unit_causes) | [Manifestation](#unit_manifestation) | [Detection](#unit_detect) | [Fix](#unit_fix)
-
-<a id="unit_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-The sensor's unit of measurement changed, creating a new statistics series and discontinuity in data.
-
-<a id="unit_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
-
-- Sensor configuration was changed (e.g., Wh → kWh)
-- Integration updated with different default units
-- Manual reconfiguration
-- Device firmware change
-- Template sensor modified
-
-<a id="unit_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Manifestation</span>
-
-- Two separate entries in `statistics_meta` for what should be one sensor
-- Different `statistic_id` entries (often with suffix like `_2`, `_3`)
-- Graphs show discontinuity at the change point
-- Energy dashboard may not recognize the new series
-- Historical data appears "lost" (actually in different series)
-
-**Example:**
-
-statistics_meta table:
-
-| id | statistic_id              | unit_of_measurement | has_sum | source |
-|----|---------------------------|---------------------|---------|--------|
-| 42 | sensor.power_consumption  | Wh                  | 1       | recorder ← Old (stopped 2025-12-01) |
-| 89 | sensor.power_consumption  | kWh                 | 1       | recorder ← New (started 2025-12-01) |
-
-**Visual effect:**
-
-```text
-Energy graph shows:
-Jan-Nov 2025: [███████████████] 15000 Wh total
-Dec 2025-Jan 2026: [No data shown] ← Actually exists but in different series
-```
-
-<a id="unit_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Detection</span>
-
-```sql
--- Find duplicate statistic_id with different units
-SELECT 
-  statistic_id,
-  unit_of_measurement,
-  COUNT(*) as series_count,
-  GROUP_CONCAT(id) as metadata_ids
-FROM statistics_meta
-GROUP BY statistic_id
-HAVING COUNT(*) > 1
-ORDER BY statistic_id;
-```
-
-<a id="unit_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Unit Changed Fix</span>
+<a id="orphan_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Entities Fix</span>
 
 TODO PLACEHOLDER
 
@@ -1019,12 +1014,12 @@ TODO PLACEHOLDER
 
 ## **5.12 Orphaned Statistics Metadata**
 
-[Description](#orphan_description) | [Causes](#orphan_causes) | [Manifestation](#orphan_manifestation) | [Detection](#orphan_detect) | [Fix](#orphan_fix)
+[Description](#orphmeta_description) | [Causes](#orphmeta_causes) | [Manifestation](#orphmeta_manifestation) | [Detection](#orphmeta_detect) | [Fix](#orphmeta_fix)
 
-<a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="orphmeta_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Entries in `statistics_meta` table have no corresponding records in `statistics` or `statistics_short_term` tables.
 
-<a id="orphan_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
+<a id="orphmeta_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Statistics were manually deleted but metadata wasn't
 - Purge operation incomplete or interrupted
@@ -1032,7 +1027,7 @@ Entries in `statistics_meta` table have no corresponding records in `statistics`
 - Database cleanup tools only cleaned data tables
 - Statistics generation started but immediately failed
 
-<a id="orphan_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Manifestation</span>
+<a id="orphmeta_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Manifestation</span>
 
 - Metadata entries with zero statistics records
 - Wasted database space (minimal but clutters queries)
@@ -1054,7 +1049,7 @@ SELECT COUNT(*) FROM statistics WHERE metadata_id = 99;
 Result: 0  ← No statistics ever recorded!
 ```
 
-<a id="orphan_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Detection</span>
+<a id="orphmeta_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
 ```sql
 -- Find orphaned metadata
@@ -1086,7 +1081,7 @@ WHERE COALESCE(s_count.count, 0) = 0
   AND COALESCE(ss_count.count, 0) = 0;
 ```
 
-<a id="orphan_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Metadata Fix</span>
+<a id="orphmeta_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Fix</span>
 
 TODO PLACEHOLDER
 
