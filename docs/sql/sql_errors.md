@@ -35,7 +35,7 @@ LIMIT 50;
 ```
 
 ```sql
--- Check for gaps in statistics sama as above - MariaDB version
+-- Check for gaps in statistics same as above - MariaDB version
 WITH gap_analysis AS (
   SELECT 
     FROM_UNIXTIME(start_ts) as period,

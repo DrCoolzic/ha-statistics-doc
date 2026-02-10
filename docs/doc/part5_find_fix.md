@@ -13,38 +13,29 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Statistics on Deleted Entities](#53-statistics-on-deleted-entities) | [deleted_detect](#deleted_detect) | [deleted_fix](#deleted_fix) | ❌ |
 | [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) | ❌ |
 | [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) | ✅ manual |
-| [Duplicate Statistics](#56-duplicate-statistics) | [dup_detect](#dup_detect) | [dup_fix](#dup_fix) | ❌ |
-| [State Class Changed](#57-state-class-changed) | [stclass_detect](#stclass_detect) | [stclass_fix](#stclass_fix) | ❌ |
-| [Counter Reset Not Detected](#58-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) | ❌ |
-| [Wrong Mean Type](#59-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) | ❌ |
-| [Negative Values in Total_Increasing](#510-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) | ❌ |
-| [Large Unexpected Sum Jumps](#511-large-unexpected-sum-jumps) | [sumjump_detect](#sumjump_detect) | [sumjump_fix](#sumjump_fix) | ❌ |
-| [Orphaned Statistics Metadata](#512-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) | ❌ |
-| [Mismatched Has_Sum and Mean_Type](#513-mismatched-has_sum-and-mean_type) | [mismatch_detect](#mismatch_detect) | [mismatch_fix](#mismatch_fix) | ❌ |
+| [Counter Reset Not Detected](#56-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) | ❌ |
+| [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) | ❌ |
+| [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) | ❌ |
+| [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) | ❌ |
 
-Errors can be detected by using Developer Tools, SQL queries, or monitoring logs. Some errors can be fixed automatically, others require manual intervention.
-But the **best practice** is to prevent errors in the first place.
+Errors can be detected by using Developer Tools, SQL queries, or monitoring logs... Some errors can be fixed automatically, others require manual intervention. But the **best practice** is to prevent errors in the first place.
 
 1. **Validate before deploying**
    - Test sensor configuration in developer template tool
    - Check `state_class` matches data type
    - Verify units before adding statistics
-
 2. **Use availability templates**
    - Filter out 'unavailable' and 'unknown' states
    - Validate numeric values
    - Prevent glitch propagation
-
 3. **Plan changes carefully**
    - Don't change units mid-stream
    - Rename entities via statistics migration tools
    - Test state_class changes on non-production data
-
 4. **Regular monitoring**
    - Check Developer Tools → Statistics weekly
    - Review Settings → System → Repairs
    - Monitor log files for warnings
-
 5. **Backup before modifications**
    - Always backup `home-assistant_v2.db` before direct SQL
    - Export critical statistics before migration
@@ -52,11 +43,11 @@ But the **best practice** is to prevent errors in the first place.
 
 ---
 
-Each error manifests differently in the UI and database. 
+Each error manifests differently in the UI and database.
 We are going to cover the most common errors in this document and provide information on how to fix them.
 
->**Note** "Unit of Measurement Changes"
-    Unit selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
+>**Note about Unit of Measurement**
+    Unit of Measurement selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
     [Appendix 1: How HA Selects and Displays Units](Apdx1_set_units.md) and
     [Appendix 2: Changing Units of Measurement](apdx2_change_units.md).
 
@@ -133,12 +124,6 @@ LIMIT 50;
 
 | period | mean | gap_hours | gap_severity |
 |---|---|---|---|
-|2025-09-21 23:00:00.000000 | 25.717321462847288 | 456 | ⚠️ LARGE GAP (>2 hours) |
-|2025-01-14 20:00:00.000000 | 18.87051401771877 | 228 | ⚠️ LARGE GAP (>2 hours) |
-|2022-12-13 20:00:00.000000 | 23.57158472033553 | 147 | ⚠️ LARGE GAP (>2 hours) |
-|2022-12-14 13:00:00.000000 | 20.547605773116427 | 11 | ⚠️ LARGE GAP (>2 hours) |
-|2023-12-03 08:00:00.000000 | 19.8 | 9 | ⚠️ LARGE GAP (>2 hours) |
-|2022-12-25 18:00:00.000000 | 20.300000000000004 | 9 | ⚠️ LARGE GAP (>2 hours) |
 |2025-01-22 19:00:00.000000 | 17.69790881333039 | 7 | ⚠️ LARGE GAP (>2 hours) |
 |2023-12-03 17:00:00.000000 | 19.725162957811452 | 3 | ⚠️ LARGE GAP (>2 hours) |
 |2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED |
@@ -147,43 +132,7 @@ LIMIT 50;
 <a id="gap_detect_counter"></a>**Query for Counter**
 
 ```sql
--- Check for gaps in counter statistics (only show gaps) - SQLite
-WITH gap_analysis AS (
-  SELECT 
-    datetime(start_ts, 'unixepoch', 'localtime') as period,
-    state,
-    sum,
-    sum - LAG(sum) OVER (ORDER BY start_ts) as consumption,
-    start_ts,
-    LAG(start_ts) OVER (ORDER BY start_ts) as previous_ts,
-    start_ts - LAG(start_ts) OVER (ORDER BY start_ts) as gap_seconds
-  FROM statistics
-  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.east')
-)
-SELECT 
-  period,
-  state as counter_value,
-  sum as cumulative_sum,
-  consumption as period_consumption,
-  gap_seconds / 3600.0 as gap_hours,
-  CASE 
-    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP (>2 hours)'
-    WHEN gap_seconds > 3600 THEN '⚠️ GAP DETECTED'
-  END as gap_severity,
-  '❌ Missing consumption data for this period' as impact
-FROM gap_analysis
-WHERE gap_seconds > 3600  -- Only show gaps > 1 hour
-ORDER BY gap_seconds DESC
-LIMIT 50;
-```
-
-| period              | counter_value | cumulative_sum | period_consumption | gap_hours | gap_severity   | impact |
-|---------------------|---------------|----------------|-------------------|-----------|----------------|--- |
-| 2026-01-15 14:00:00 | 1250.5        | 1250.5         | NULL              | 6.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data |
-| 2026-01-20 06:00:00 | 1305.2        | 1305.2         | NULL              | 3.0       | ⚠️ LARGE GAP  | ❌ Missing consumption data |
-
-```sql
--- Version Showing gaps with before/after context
+-- Check gap in counter statistics
 -- This version shows the records before and after each gap for better context:
 SELECT 
   datetime(s1.start_ts, 'unixepoch', 'localtime') as last_record_before_gap,
@@ -214,14 +163,56 @@ ORDER BY gap_hours DESC
 LIMIT 50;
 ```
 
-| before_gap_ts | state_bef. | sum_bef. | gap_hour | first_record_after_gap | state_aft. | sum_aft. | sum_change | gap_impact |
-|------------------------|--------------|------------|-----------|------------------------|-------------|-----------|------------|--- |
-| 2026-01-15 08:00:00    | 1220.5       | 1220.5     | 6.0       | 2026-01-15 14:00:00    | 1250.5      | 1250.5    | 30.0       | ⚠️ Consumption during gap |
-| 2026-01-20 03:00:00    | 1305.2       | 1305.2     | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
+| last before gap | state before | sum before | gap indicator | gap hours | first after gap | state after | sum after | sum change across gap | gap impact |
+|---|---|---|---|---|---|---|---|--- | --- |
+| 2026-01-15 08:00:00 | 1220.5 | 1220.5 | ⚠️ GAP  | 6.0 | 2026-01-15 14:00:00 | 1250.5 | 1250.5 | 30.0 | ⚠️ Consumption during gap |
+| 2026-01-20 03:00:00    | 1305.2       | 1305.2    | ⚠️ GAP | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
 
 <a id="gap_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Missing Statistics Fix</span>
 
-TODO PLACEHOLDER
+**For measurement entities** (e.g., temperature, humidity): there is not much that can be done. We cannot guess what the values would have been during the gap. The graph will simply show a blank area for the missing period. This is generally acceptable — it honestly reflects that no data was collected.
+
+**For counter entities** (e.g., energy, water, gas): while we also cannot guess the actual consumption pattern during the gap, the real problem is what happens **after** the gap. The first record after the gap contains the entire accumulated consumption for the missing period in a single hourly entry. This creates an ugly spike on bar graphs (e.g., the energy dashboard showing 30 kWh in one hour instead of ~6 kWh/h spread over 5 hours).
+
+The fix is to **insert interpolated rows** that distribute the consumption evenly across the gap.
+
+**Example** (from the detection query above):
+
+- Gap: 2026-01-15 **08:00** → **14:00** (6 hours gap = 5 missing entries at 09, 10, 11, 12, 13)
+- `sum` before gap: 1220.5, after gap: 1250.5 → delta = 30.0
+- `state` before gap: 1220.5, after gap: 1250.5 → delta = 30.0
+- Interpolation: each missing row gets a consumption increment of 30.0 / 5 = **6.0**
+
+The interpolated rows to insert would be:
+
+| start_ts (as datetime) | state | sum | mean | min | max |
+|---|---|---|---|---|---|
+| 2026-01-15 09:00:00 | 1226.5 | 1226.5 | NULL | NULL | NULL |
+| 2026-01-15 10:00:00 | 1232.5 | 1232.5 | NULL | NULL | NULL |
+| 2026-01-15 11:00:00 | 1238.5 | 1238.5 | NULL | NULL | NULL |
+| 2026-01-15 12:00:00 | 1244.5 | 1244.5 | NULL | NULL | NULL |
+| 2026-01-15 13:00:00 | 1250.5 | 1250.5 | NULL | NULL | NULL |
+
+After inserting these rows, the first record after the gap (14:00) no longer shows a 30 kWh spike — the consumption is spread evenly across the missing hours.
+
+!!! warning "Important"
+    - `mean`, `min`, `max` are set to NULL since we don't know the actual values during the gap.
+    - The `metadata_id` must match the entity's id in `statistics_meta`.
+    - The `start_ts` values must be Unix timestamps (use `strftime('%s', '2026-01-15 09:00:00')` in SQLite).
+    - Always work on a **backup copy** of the database first.
+    - If `sum` did not change across the gap (delta = 0), there is no consumption to distribute — no fix is needed.
+
+```sql
+-- Example: Insert interpolated rows for a counter gap
+-- Adjust metadata_id, timestamps, and values to match your specific gap
+INSERT INTO statistics (metadata_id, start_ts, created_ts, state, sum, mean, min, max)
+VALUES
+  (42, strftime('%s', '2026-01-15 09:00:00'), strftime('%s', 'now'), 1226.5, 1226.5, NULL, NULL, NULL),
+  (42, strftime('%s', '2026-01-15 10:00:00'), strftime('%s', 'now'), 1232.5, 1232.5, NULL, NULL, NULL),
+  (42, strftime('%s', '2026-01-15 11:00:00'), strftime('%s', 'now'), 1238.5, 1238.5, NULL, NULL, NULL),
+  (42, strftime('%s', '2026-01-15 12:00:00'), strftime('%s', 'now'), 1244.5, 1244.5, NULL, NULL, NULL),
+  (42, strftime('%s', '2026-01-15 13:00:00'), strftime('%s', 'now'), 1250.5, 1250.5, NULL, NULL, NULL);
+```
 
 ---
 
@@ -359,77 +350,58 @@ LIMIT 50;
 | 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2             | 2.3     | -19.7            | ❌ NEGATIVE consumption  | Counter decreased |
 | 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5              | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)    | |
 
-```sql
--- Detect spike + recovery pattern (glitch signature) - SQLite (corrected)
-WITH consumption_calc AS (
-  -- Step 1: Calculate consumption and next consumption
-  SELECT 
-    datetime(start_ts, 'unixepoch', 'localtime') as period,
-    start_ts,
-    state,
-    sum,
-    sum - LAG(sum) OVER (ORDER BY start_ts) as consumption,
-    LEAD(sum) OVER (ORDER BY start_ts) - sum as next_consumption
-  FROM statistics
-  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
-),
-consumption_with_avg AS (
-  -- Step 2: Calculate rolling average
-  SELECT 
-    period,
-    state,
-    sum,
-    consumption,
-    next_consumption,
-    AVG(consumption) OVER (
-      ORDER BY start_ts
-      ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
-    ) as avg_consumption
-  FROM consumption_calc
-)
-SELECT 
-  period,
-  state,
-  sum,
-  ROUND(consumption, 2) as this_period_consumption,
-  ROUND(next_consumption, 2) as next_period_consumption,
-  ROUND(avg_consumption, 2) as baseline_avg,
-  CASE 
-    WHEN consumption > avg_consumption * 5 
-         AND next_consumption < 0 
-         AND ABS(next_consumption) > avg_consumption * 3
-    THEN '❌ SPIKE + DROP GLITCH DETECTED'
-    WHEN consumption > avg_consumption * 5 
-         AND next_consumption < avg_consumption * 0.2
-    THEN '⚠️ SPIKE followed by very low consumption'
-    WHEN consumption < 0 
-         AND next_consumption > avg_consumption * 3
-    THEN '⚠️ DROP followed by spike (inverse glitch)'
-    ELSE 'Potential issue'
-  END as glitch_pattern,
-  'Data integrity compromised - manual correction may be needed' as recommendation
-FROM consumption_with_avg
-WHERE avg_consumption > 0
-  AND (
-    -- Spike followed by negative consumption
-    (consumption > avg_consumption * 5 AND next_consumption < 0) OR
-    -- Negative consumption followed by spike
-    (consumption < 0 AND next_consumption > avg_consumption * 3) OR
-    -- Extreme spike followed by near-zero
-    (consumption > avg_consumption * 10 AND next_consumption < avg_consumption * 0.2)
-  )
-ORDER BY period DESC
-LIMIT 50;
-```
-
-| period              | state  | sum    | this_period | next_period | baseline_avg | glitch_pattern                | recommendation |
-|---------------------|--------|--------|-------------|-------------|--------------|-------------------------------|----------------|
-| 2026-01-15 13:00:00 | 1255.2 | 1255.2 | 2500.00     | -2480.00    | 2.50         | ❌ SPIKE + DROP GLITCH      | Manual correction needed |
-| 2026-02-03 09:00:00 | 1580.5 | 1580.5 | 125.50      | 0.10        | 2.80         | ⚠️ SPIKE + very low         | Manual correction needed |
-
 <a id="spike_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Fix</span>
 
-TODO PLACEHOLDER
+**For measurement entities** (e.g., temperature, humidity): the simplest fix is to **delete the spike record**. Since measurement statistics are independent of each other (no cumulative values), removing one row just creates a small gap in the graph — which is preferable to a misleading spike.
+
+```sql
+-- Delete a specific spike record for a measurement entity
+-- First identify the spike using the detection query, then delete by start_ts
+DELETE FROM statistics
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.temperature')
+  AND start_ts = strftime('%s', '2026-01-15 13:00:00');
+```
+
+**For counter entities** (e.g., energy, water, gas): spikes in counters typically appear as a glitch pair — a spike record with abnormally high consumption followed by a compensating record with negative or near-zero consumption. Simply deleting these records would break the cumulative `sum` chain. Instead, **replace both records with linearly interpolated values**.
+
+**Example:**
+
+Suppose the detection query found a spike at 13:00 with consumption of 2500 kWh (normal baseline ~2.5 kWh/h), followed by a compensating drop at 14:00:
+
+| period | sum | consumption | status |
+|---|---|---|---|
+| 12:00 | 1250.0 | 2.5 | OK (before spike) |
+| 13:00 | 3750.0 | 2500.0 | ❌ SPIKE |
+| 14:00 | 1255.0 | -2495.0 | ❌ COMPENSATION |
+| 15:00 | 1257.5 | 2.5 | OK (after glitch) |
+
+The fix: replace the two glitch records (13:00 and 14:00) with interpolated values based on the records before (12:00) and after (15:00):
+
+- Total real consumption over 3 hours (12:00→15:00): 1257.5 - 1250.0 = **7.5**
+- Per hour: 7.5 / 3 = **2.5**
+- Interpolated 13:00: sum = 1250.0 + 2.5 = **1252.5**
+- Interpolated 14:00: sum = 1250.0 + 5.0 = **1255.0**
+
+```sql
+-- Fix counter spike: update the two glitch records with interpolated values
+-- Step 1: Update the spike record
+UPDATE statistics
+SET state = 1252.5, sum = 1252.5, mean = NULL, min = NULL, max = NULL
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND start_ts = strftime('%s', '2026-01-15 13:00:00');
+
+-- Step 2: Update the compensation record
+UPDATE statistics
+SET state = 1255.0, sum = 1255.0, mean = NULL, min = NULL, max = NULL
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND start_ts = strftime('%s', '2026-01-15 14:00:00');
+```
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Verify the records before and after the glitch are valid before interpolating.
+    - If the spike is a single record (no compensation drop), you can simply UPDATE it with an interpolated value based on the surrounding records.
+    - After fixing, re-run the detection query to confirm the spike is gone.
 
 ---
 
@@ -493,7 +465,29 @@ ORDER BY sm.statistic_id;
 
 <a id="deleted_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Deleted Entities Fix</span>
 
-TODO PLACEHOLDER
+Since the entity no longer exists, the statistics data is no longer useful. The fix is to **delete all associated records** from the three statistics tables: `statistics`, `statistics_short_term`, and `statistics_meta`.
+
+The deletion must be done in the correct order — data tables first, then metadata — because `statistics` and `statistics_short_term` reference `statistics_meta` via `metadata_id`.
+
+```sql
+-- Step 1: Delete long-term statistics
+DELETE FROM statistics
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.old_temperature');
+
+-- Step 2: Delete short-term statistics
+DELETE FROM statistics_short_term
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.old_temperature');
+
+-- Step 3: Delete the metadata entry
+DELETE FROM statistics_meta
+WHERE statistic_id = 'sensor.old_temperature';
+```
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Use the detection query to identify the exact `statistic_id` before deleting.
+    - Delete data tables (`statistics`, `statistics_short_term`) **before** `statistics_meta` to avoid foreign key issues.
+    - After deleting, restart Home Assistant for changes to take effect.
 
 ---
 
@@ -571,7 +565,28 @@ The `statistics_count` column shows how many long-term statistics records exist 
 
 <a id="orphan_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Orphaned Entities Fix</span>
 
-TODO PLACEHOLDER
+The fix is the same as for deleted entities (section 5.3): **delete all associated records** from the three statistics tables in the correct order.
+
+```sql
+-- Step 1: Delete long-term statistics
+DELETE FROM statistics
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.zigbee_power');
+
+-- Step 2: Delete short-term statistics
+DELETE FROM statistics_short_term
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.zigbee_power');
+
+-- Step 3: Delete the metadata entry
+DELETE FROM statistics_meta
+WHERE statistic_id = 'sensor.zigbee_power';
+```
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Use the detection query to identify the exact `statistic_id` before deleting.
+    - Delete data tables (`statistics`, `statistics_short_term`) **before** `statistics_meta`.
+    - After deleting, restart Home Assistant for changes to take effect.
+    - You may also want to remove the orphaned entity itself via Settings → Entities → select entity → Delete.
 
 ---
 
@@ -612,148 +627,78 @@ statistics_meta shows:
 <a id="renamed_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Detection</span>
 
 ```sql
--- Find statistics that might be renamed (similar names, one stopped, one started)
+-- Find statistics pairs that might be a renamed entity
+-- Looks for: same unit/has_sum, one stopped recording, the other started around the same time
+WITH entity_ranges AS (
+  SELECT 
+    sm.id as meta_id,
+    sm.statistic_id,
+    sm.unit_of_measurement,
+    sm.has_sum,
+    MIN(s.start_ts) as first_record,
+    MAX(s.start_ts) as last_record
+  FROM statistics_meta sm
+  JOIN statistics s ON sm.id = s.metadata_id
+  GROUP BY sm.id
+)
 SELECT 
-  sm1.statistic_id as old_name,
-  MAX(s1.start_ts) as old_last_record,
-  sm2.statistic_id as possibly_new_name,
-  MIN(s2.start_ts) as new_first_record,
-  ABS(MAX(s1.start_ts) - MIN(s2.start_ts)) as time_gap_seconds
-FROM statistics_meta sm1
-JOIN statistics s1 ON sm1.id = s1.metadata_id
-JOIN statistics_meta sm2 ON sm1.unit_of_measurement = sm2.unit_of_measurement
-  AND sm1.has_sum = sm2.has_sum
-  AND sm1.statistic_id != sm2.statistic_id
-JOIN statistics s2 ON sm2.id = s2.metadata_id
-WHERE time_gap_seconds < 86400  -- Within 24 hours
-GROUP BY sm1.statistic_id, sm2.statistic_id
-ORDER BY time_gap_seconds;
+  old.statistic_id as old_name,
+  datetime(old.last_record, 'unixepoch', 'localtime') as old_last_record,
+  new.statistic_id as new_name,
+  datetime(new.first_record, 'unixepoch', 'localtime') as new_first_record,
+  ROUND((new.first_record - old.last_record) / 3600.0, 1) as gap_hours
+FROM entity_ranges old
+JOIN entity_ranges new 
+  ON old.unit_of_measurement = new.unit_of_measurement
+  AND old.has_sum = new.has_sum
+  AND old.statistic_id != new.statistic_id
+  AND old.last_record < new.first_record          -- old stopped before new started
+  AND (new.first_record - old.last_record) < 86400 -- within 24 hours
+ORDER BY gap_hours;
 ```
 
 <a id="renamed_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Fix</span>
 
-TODO PLACEHOLDER
+The fix is to **update the `statistic_id`** in `statistics_meta` from the old name to the new name. This consolidates all historical data under the new entity name.
+
+Before merging, verify that the new entity already has a `statistics_meta` entry. If it does, you need to **move the statistics records** from the old metadata_id to the new one, then delete the old metadata entry. If it doesn't, a simple rename suffices.
+
+**Case 1: New entity has no existing statistics** (simple rename)
+
+```sql
+-- Simply rename the statistic_id in metadata
+UPDATE statistics_meta
+SET statistic_id = 'sensor.lounge_temperature'
+WHERE statistic_id = 'sensor.living_room_temperature';
+```
+
+**Case 2: New entity already has statistics** (merge)
+
+```sql
+-- Step 1: Move old statistics to the new metadata_id
+UPDATE statistics
+SET metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.lounge_temperature')
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.living_room_temperature');
+
+-- Step 2: Move old short-term statistics
+UPDATE statistics_short_term
+SET metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.lounge_temperature')
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.living_room_temperature');
+
+-- Step 3: Delete the old metadata entry
+DELETE FROM statistics_meta
+WHERE statistic_id = 'sensor.living_room_temperature';
+```
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Verify both entities have the same `unit_of_measurement` and `has_sum` before merging.
+    - Check for overlapping timestamps — if both old and new have records for the same period, you'll need to delete the duplicates before merging.
+    - After merging, restart Home Assistant for changes to take effect.
 
 ---
 
-## **5.6 Duplicate Statistics**
-
-[Description](#dup_description) | [Causes](#dup_causes) | [Manifestation](#dup_manifestation) | [Detection](#dup_detect) | [Fix](#dup_fix)
-
-<a id="dup_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-Multiple statistics records exist for the same entity and time period, causing data integrity issues.
-
-<a id="dup_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
-
-- Database corruption
-- Import errors when migrating databases
-- Manual SQL modifications gone wrong
-- Statistics repair tool malfunction
-- Concurrent write conflicts
-
-<a id="dup_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Manifestation</span>
-
-- Multiple records with identical `metadata_id` and `start_ts`
-- Inconsistent values shown in different UI views
-- Errors in Developer Tools → Statistics validation
-- Warnings in Home Assistant logs
-- Incorrect aggregations in long-term statistics
-
-**Example:**
-
-```sql
-SELECT * FROM statistics 
-WHERE metadata_id = 42 AND start_ts = 1735660800;
-```
-
-| id    | metadata_id | start_ts   | mean  | sum   | notes |
-|-------|-------------|------------|-------|-------|-------|
-| 10001 | 42          | 1735660800 | 23.5  | NULL  | ← Duplicate! |
-| 10023 | 42          | 1735660800 | 23.7  | NULL  | ← Duplicate! |
-
-<a id="dup_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Detection</span>
-
-```sql
--- Find duplicate statistics
-SELECT 
-  metadata_id,
-  start_ts,
-  datetime(start_ts, 'unixepoch', 'localtime') as period,
-  COUNT(*) as duplicate_count,
-  GROUP_CONCAT(id) as record_ids
-FROM statistics
-GROUP BY metadata_id, start_ts
-HAVING COUNT(*) > 1
-ORDER BY start_ts DESC;
-```
-
-<a id="dup_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Duplicate Statistics Fix</span>
-
-TODO PLACEHOLDER
-
----
-
-## **5.7 State Class Changed**
-
-[Description](#stclass_description) | [Causes](#stclass_causes) | [Manifestation](#stclass_manifestation) | [Detection](#stclass_detect) | [Fix](#stclass_fix)
-
-<a id="stclass_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-The `state_class` attribute was changed (e.g., `measurement` → `total_increasing`), creating incompatible statistics.
-
-<a id="stclass_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
-
-- Configuration error or experimentation
-- Integration update changed default state class
-- User misunderstanding of state_class purpose
-- Template sensor reconfiguration
-
-<a id="stclass_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Manifestation</span>
-
-- New `statistic_id` may be created with suffix
-- Existing statistics may show validation warnings
-- Incorrect statistics type for entity behavior
-- Energy dashboard may reject the sensor
-- Graphs show wrong visualization type
-
-**Example:**
-
-```text
-Before: state_class: measurement  → tracks mean/min/max
-After:  state_class: total_increasing → tracks sum
-
-Result:
-- Old statistics show mean values (e.g., 2.5 kW)
-- New statistics show sum values (e.g., 150 kWh)
-- Incompatible for merging or comparison
-```
-
-<a id="stclass_detect"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Detection</span>
-
-```sql
--- Detect potential state_class changes
--- (Look for metadata_id with both has_sum=0 and has_sum=1 for similar statistic_id)
-SELECT 
-  sm1.statistic_id,
-  sm1.has_sum as type1_has_sum,
-  sm1.mean_type as type1_mean_type,
-  sm2.statistic_id as similar_id,
-  sm2.has_sum as type2_has_sum,
-  sm2.mean_type as type2_mean_type
-FROM statistics_meta sm1
-JOIN statistics_meta sm2 
-  ON sm1.statistic_id LIKE sm2.statistic_id || '%'
-  OR sm2.statistic_id LIKE sm1.statistic_id || '%'
-WHERE sm1.has_sum != sm2.has_sum
-  AND sm1.id != sm2.id;
-```
-
-<a id="stclass_fix"></a><span style="font-size: 1.2em; font-weight: bold;">State Class Changed Fix</span>
-
-TODO PLACEHOLDER
-
----
-
-## **5.8 Counter Reset Not Detected**
+## **5.6 Counter Reset Not Detected**
 
 [Description](#reset_description) | [Causes](#reset_causes) | [Manifestation](#reset_manifestation) | [Detection](#reset_detect) | [Fix](#reset_fix)
 
@@ -812,11 +757,49 @@ LIMIT 50;
 
 <a id="reset_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Counter Reset Fix</span>
 
-TODO PLACEHOLDER
+When a counter reset is missed, the `sum` freezes at its pre-reset value and subsequent consumption is lost. The fix is to **recalculate `sum` from the reset point onward**, adding the post-reset state changes back into the cumulative sum.
+
+Using the example above (reset at 12:00, state dropped from 1255 to 5):
+
+| period | state | sum (broken) | sum (fixed) | explanation |
+|---|---|---|---|---|
+| 11:00 | 1255 | 1255 | 1255 | OK — last record before reset |
+| 12:00 | 5 | 1255 | 1260 | Reset: sum = 1255 + 5 (new state) |
+| 13:00 | 8 | 1258 | 1263 | sum = 1260 + (8 - 5) = 1263 |
+
+```sql
+-- Fix missed counter reset: recalculate sum from the reset point onward
+-- Step 1: Identify the pre-reset sum (last good sum before the reset)
+-- In this example: pre_reset_sum = 1255, reset happened at start_ts for 12:00
+
+-- Step 2: Update the reset record
+-- New sum = pre_reset_sum + new_state_after_reset
+UPDATE statistics
+SET sum = 1260.0
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND start_ts = strftime('%s', '2026-01-15 12:00:00');
+
+-- Step 3: Recalculate all subsequent records
+-- For each record after the reset, sum = previous_sum + (state - previous_state)
+-- This must be done sequentially, record by record, or with a cumulative window:
+UPDATE statistics
+SET sum = 1260.0 + (state - 5.0)
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND start_ts > strftime('%s', '2026-01-15 12:00:00');
+```
+
+!!! note "Simplified example"
+    The Step 3 query above works when `state` is a monotonically increasing counter (each record's consumption = `state - state_at_reset`). For counters with multiple resets or complex patterns, you may need to recalculate each record individually using a script or spreadsheet.
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Verify the pre-reset `sum` value is correct before recalculating.
+    - After fixing, check the energy dashboard to confirm consumption values look reasonable.
+    - If many records need fixing, consider using the HA `developer-tools/statistics` "Adjust sum" feature instead of manual SQL.
 
 ---
 
-## **5.9 Wrong Mean Type (Circular vs Arithmetic)**
+## **5.7 Wrong Mean Type (Circular vs Arithmetic)**
 
 [Description](#meantype_description) | [Causes](#meantype_causes) | [Manifestation](#meantype_manifestation) | [Detection](#meantype_detect) | [Fix](#meantype_fix)
 
@@ -880,11 +863,41 @@ WHERE sm.mean_type IN (1, 2);
 
 <a id="meantype_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Wrong Mean Type Fix</span>
 
-TODO PLACEHOLDER
+The fix has two parts: correct the `mean_type` in metadata, and deal with the incorrectly computed historical statistics.
+
+**Step 1: Fix the mean_type in metadata**
+
+```sql
+-- Change mean_type to circular (2) for a wind direction sensor
+UPDATE statistics_meta
+SET mean_type = 2
+WHERE statistic_id = 'sensor.wind_direction';
+```
+
+**Step 2: Delete incorrect historical statistics**
+
+The existing `mean`, `min`, and `max` values were computed with the wrong averaging method and cannot be corrected with a simple SQL update (circular mean requires trigonometric functions not available in SQLite). The safest approach is to **delete the incorrect records** and let HA rebuild them going forward.
+
+```sql
+-- Delete statistics computed with wrong mean type
+DELETE FROM statistics
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.wind_direction');
+
+DELETE FROM statistics_short_term
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.wind_direction');
+```
+
+!!! note
+    Historical data will be lost. If the sensor has only been running for a short time, this is acceptable. If you need to preserve history, the only option is to recalculate the circular means externally (e.g., with Python) and update each record individually.
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Fix the `device_class` in your HA configuration **before** correcting the database, otherwise HA will recreate the wrong mean_type.
+    - After fixing, restart Home Assistant for changes to take effect.
 
 ---
 
-## **5.10 Negative Values in Total_Increasing**
+## **5.8 Negative Values in Total_Increasing**
 
 [Description](#neg_description) | [Causes](#neg_causes) | [Manifestation](#neg_manifestation) | [Detection](#neg_detect) | [Fix](#neg_fix)
 
@@ -936,83 +949,54 @@ ORDER BY s.start_ts DESC;
 
 <a id="neg_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Negative Values Fix</span>
 
-TODO PLACEHOLDER
+Negative values in a `total_increasing` counter are physically impossible (e.g., you can't "un-consume" energy). The fix depends on whether the negative value is a transient glitch or a persistent error.
 
----
-
-## **5.11 Large Unexpected Sum Jumps**
-
-[Description](#sumjump_description) | [Causes](#sumjump_causes) | [Manifestation](#sumjump_manifestation) | [Detection](#sumjump_detect) | [Fix](#sumjump_fix)
-
-<a id="sumjump_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-The `sum` field shows unrealistic jumps between periods that don't match the `state` values or expected consumption patterns.
-
-<a id="sumjump_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
-
-- Integration bug calculating sum incorrectly
-- Counter reset handled incorrectly (added instead of continuing)
-- Manual statistics import error
-- Data corruption during database migration
-- Sensor sent burst of accumulated data
-
-<a id="sumjump_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Manifestation</span>
-
-- Energy dashboard shows impossible consumption spikes
-- Single hour shows years worth of consumption
-- Sum increases by 1000x normal amount
-- May appear as single tall bar in bar chart
-- Following periods return to normal rates
-
-**Example:**
-
-```text
-Hourly consumption pattern:
-10:00-11:00 → +2.5 kWh  [NORMAL]
-11:00-12:00 → +2.8 kWh  [NORMAL]
-12:00-13:00 → +2500 kWh [ERROR! - Should be ~2.5 kWh]
-13:00-14:00 → +2.6 kWh  [NORMAL]
-```
-
-<a id="sumjump_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Detection</span>
+**Single glitch record** (negative state surrounded by valid records): replace with interpolated values, same approach as the spike fix in section 5.2.
 
 ```sql
--- Find abnormal sum increases (>10x average)
-WITH consumption AS (
-  SELECT 
-    metadata_id,
-    start_ts,
-    sum,
-    sum - LAG(sum) OVER (ORDER BY start_ts) as hourly_consumption,
-    AVG(sum - LAG(sum) OVER (ORDER BY start_ts)) OVER (
-      ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
-    ) as avg_24h_consumption
-  FROM statistics
-  WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+-- Replace a single negative-state record with interpolated value
+-- Use the average of the previous and next sum values
+UPDATE statistics
+SET state = (
+  SELECT (prev.sum + next.sum) / 2.0
+  FROM statistics prev, statistics next
+  WHERE prev.metadata_id = statistics.metadata_id
+    AND next.metadata_id = statistics.metadata_id
+    AND prev.start_ts < statistics.start_ts
+    AND next.start_ts > statistics.start_ts
+  ORDER BY prev.start_ts DESC, next.start_ts ASC
+  LIMIT 1
+),
+sum = (
+  SELECT (prev.sum + next.sum) / 2.0
+  FROM statistics prev, statistics next
+  WHERE prev.metadata_id = statistics.metadata_id
+    AND next.metadata_id = statistics.metadata_id
+    AND prev.start_ts < statistics.start_ts
+    AND next.start_ts > statistics.start_ts
+  ORDER BY prev.start_ts DESC, next.start_ts ASC
+  LIMIT 1
 )
-SELECT 
-  datetime(start_ts, 'unixepoch', 'localtime') as period,
-  hourly_consumption,
-  avg_24h_consumption,
-  ROUND(hourly_consumption / avg_24h_consumption, 1) as multiplier,
-  CASE 
-    WHEN hourly_consumption > avg_24h_consumption * 10 
-    THEN '⚠️ ABNORMAL SPIKE'
-    ELSE 'OK'
-  END as status
-FROM consumption
-WHERE hourly_consumption IS NOT NULL
-  AND avg_24h_consumption > 0
-ORDER BY start_ts DESC
-LIMIT 100;
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND start_ts = strftime('%s', '2026-01-15 11:00:00');
 ```
 
-<a id="sumjump_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Sum Jumps Fix</span>
+**Multiple consecutive negative records**: it may be simpler to delete them and accept a gap.
 
-TODO PLACEHOLDER
+```sql
+DELETE FROM statistics
+WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
+  AND state < 0;
+```
+
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - Fix the root cause (sensor config, template error) **before** correcting the database.
+    - After fixing, verify the `sum` chain is still monotonically increasing.
 
 ---
 
-## **5.12 Orphaned Statistics Metadata**
+## **5.9 Orphaned Statistics Metadata**
 
 [Description](#orphmeta_description) | [Causes](#orphmeta_causes) | [Manifestation](#orphmeta_manifestation) | [Detection](#orphmeta_detect) | [Fix](#orphmeta_fix)
 
@@ -1083,76 +1067,19 @@ WHERE COALESCE(s_count.count, 0) = 0
 
 <a id="orphmeta_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Fix</span>
 
-TODO PLACEHOLDER
-
----
-
-## **5.13 Mismatched Has_Sum and Mean_Type**
-
-[Description](#mismatch_description) | [Causes](#mismatch_causes) | [Manifestation](#mismatch_manifestation) | [Detection](#mismatch_detect) | [Fix](#mismatch_fix)
-
-<a id="mismatch_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
-The `has_sum` and `mean_type` fields in `statistics_meta` have invalid combinations that violate statistics logic.
-
-<a id="mismatch_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
-
-- Database corruption
-- Manual SQL modification error
-- Statistics repair tool bug
-- Migration error from older HA versions
-
-<a id="mismatch_manifestation"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Manifestation</span>
-
-- Validation errors in Developer Tools
-- Statistics compiler may skip these entities
-- Queries return unexpected results
-- Possible crashes in statistics-related UI
-
-**Valid combinations:**
-
-```text
-has_sum=0, mean_type=1  → Measurement (arithmetic)
-has_sum=0, mean_type=2  → Measurement (circular)
-has_sum=1, mean_type=0  → Counter (no mean)
-```
-
-**Invalid combinations:**
-
-```text
-has_sum=1, mean_type=1  ❌ Counter shouldn't have mean
-has_sum=1, mean_type=2  ❌ Counter shouldn't have circular mean
-has_sum=0, mean_type=0  ❌ Measurement should have mean type
-```
-
-<a id="mismatch_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Detection</span>
+Since there are no statistics records associated with these metadata entries, simply **delete the orphaned rows** from `statistics_meta`.
 
 ```sql
--- Find invalid has_sum / mean_type combinations
-SELECT 
-  statistic_id,
-  has_sum,
-  mean_type,
-  CASE 
-    WHEN has_sum = 1 AND mean_type != 0 
-    THEN '❌ Counter should have mean_type=0'
-    WHEN has_sum = 0 AND mean_type = 0 
-    THEN '❌ Measurement should have mean_type=1 or 2'
-    WHEN has_sum = 0 AND mean_type NOT IN (1, 2)
-    THEN '❌ Invalid mean_type value'
-    ELSE '✓ Valid'
-  END as validation
-FROM statistics_meta
-WHERE NOT (
-  (has_sum = 0 AND mean_type IN (1, 2)) OR
-  (has_sum = 1 AND mean_type = 0)
-);
+-- Delete orphaned metadata entries (those with no statistics in either table)
+DELETE FROM statistics_meta
+WHERE id NOT IN (SELECT DISTINCT metadata_id FROM statistics)
+  AND id NOT IN (SELECT DISTINCT metadata_id FROM statistics_short_term);
 ```
 
-<a id="mismatch_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Mismatched Fields Fix</span>
-
-TODO PLACEHOLDER
+!!! warning "Important"
+    - Always work on a **backup copy** of the database first.
+    - After deleting, restart Home Assistant for changes to take effect.
 
 ---
 
 **Previous** - [Part 4: Best Practices and Troubleshooting](part4_practices_troubleshooting.md)
-

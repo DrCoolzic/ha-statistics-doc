@@ -6,7 +6,9 @@
         "JULIANDAY",
         "Koskila",
         "localtime",
+        "meantype",
         "montry",
+        "orphmeta",
         "postgresql",
         "pymdownx",
         "pymysql",
@@ -23,6 +25,7 @@
         "UNIXTIME",
         "urms",
         "VARCHAR",
-        "vitocal"
+        "vitocal",
+        "zigbee"
     ]
 }

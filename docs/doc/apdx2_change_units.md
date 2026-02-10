@@ -26,10 +26,12 @@ The change appears to save successfully. **However, nothing actually changes.**
 When you change the unit via the UI:
 
 **✅ What does happen:**
+
 - Entity registry file (`.storage/core.entity_registry`) updates immediately
 - The field `options.sensor.unit_of_measurement` reflects your change
 
 **❌ What does NOT happen:**
+
 - The displayed unit stays the same
 - Statistics metadata remains unchanged
 - Historical data remains in the old unit
@@ -42,7 +44,7 @@ When you change the unit via the UI:
 
 Home Assistant uses **three separate places** to store unit information:
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │ 1. statistics_meta table                            │
 │    - Controls what UI displays                      │
@@ -82,17 +84,20 @@ These findings are based on systematic testing on a live Home Assistant system.
 ### Test 1: UI Change Has No Effect
 
 **Setup:**
+
 - Sensor: `sensor.linky_easf01` (energy counter)
 - Current state: 72,831.616 kWh
 - Statistics exist with unit: kWh
 
 **Actions:**
+
 1. Changed unit to "Wh" via UI (Settings → Entities → ⚙️)
 2. Verified entity registry updated: `"unit_of_measurement": "Wh"`
 3. Closed and reopened UI
 4. Restarted Home Assistant
 
 **Results:**
+
 | Check | Expected | Actual | Result |
 |-------|----------|--------|--------|
 | Entity Registry | Wh | ✅ Wh | Updated |
@@ -106,6 +111,7 @@ These findings are based on systematic testing on a live Home Assistant system.
 ### Test 2: Statistics Metadata Controls Display
 
 **Action:**
+
 ```sql
 UPDATE statistics_meta 
 SET unit_of_measurement = 'Wh'
@@ -113,6 +119,7 @@ WHERE statistic_id = 'sensor.linky_easf01';
 ```
 
 **Results:**
+
 | Check | Before | After | Changed? |
 |-------|--------|-------|----------|
 | statistics_meta | kWh | ✅ Wh | Yes |
@@ -126,16 +133,20 @@ WHERE statistic_id = 'sensor.linky_easf01';
 ### Test 3: Fresh Start Works Correctly
 
 **Actions:**
+
 1. Deleted all statistics:
+
    ```sql
    DELETE FROM statistics WHERE metadata_id = [id];
    DELETE FROM statistics_short_term WHERE metadata_id = [id];
    DELETE FROM statistics_meta WHERE id = [id];
    ```
+
 2. Restarted Home Assistant
 3. Waited 5 minutes for new statistics to generate
 
 **Results:**
+
 | Check | Result | Details |
 |-------|--------|---------|
 | UI Display | ✅ Wh | Correct unit |
@@ -183,8 +194,9 @@ flowchart TD
 If you just created the sensor or it hasn't generated statistics yet:
 
 **Steps:**
+
 1. Change the integration/sensor configuration:
-   
+
    ```yaml
    # ESPHome example
    sensor:
@@ -198,6 +210,7 @@ If you just created the sensor or it hasn't generated statistics yet:
 2. Restart Home Assistant
 
 3. Verify in Developer Tools → States:
+
    ```yaml
    sensor.energy_meter:
      state: 12345.0
@@ -209,6 +222,7 @@ If you just created the sensor or it hasn't generated statistics yet:
 ### Option B: Delete Statistics (Simple but Destructive)
 
 **Use when:**
+
 - Historical data isn't critical
 - Sensor is relatively new
 - You want the simplest solution
@@ -233,7 +247,8 @@ WHERE statistic_id = 'sensor.your_sensor_name';
 ```
 
 Example result:
-```
+
+```text
 | id | statistic_id           | unit_of_measurement |
 |----|------------------------|---------------------|
 | 42 | sensor.energy_meter    | kWh                 |
@@ -277,6 +292,7 @@ WHERE statistic_id = 'sensor.your_sensor_name';
 ```
 
 **Verify in UI:**
+
 - Developer Tools → States: Check unit_of_measurement
 - History graph: Should show new unit
 - Statistics graph: New data in new unit
@@ -284,6 +300,7 @@ WHERE statistic_id = 'sensor.your_sensor_name';
 ### Option C: SQL Migration (Preserve All History)
 
 **Use when:**
+
 - You need continuous historical data
 - You're comfortable with SQL
 - You understand unit conversions
@@ -418,6 +435,7 @@ LIMIT 10;
 ```
 
 **Sanity checks:**
+
 - Values should be scaled correctly (e.g., kWh 72.5 → Wh 72500)
 - No NULL values introduced
 - No negative values where they shouldn't exist
@@ -432,6 +450,7 @@ ha core restart
 #### 7. Verify Everything
 
 **Check Developer Tools → States:**
+
 ```yaml
 sensor.energy_meter:
   state: 72500
@@ -439,11 +458,13 @@ sensor.energy_meter:
 ```
 
 **Check History Graph:**
+
 - Should show continuous data
 - Values should make sense in new unit
 - No sudden jumps or discontinuities
 
 **Check Statistics:**
+
 ```sql
 -- Compare oldest and newest statistics
 SELECT 
@@ -462,6 +483,7 @@ Should show full date range preserved.
 ### Option D: Accept Discontinuity (Compromise)
 
 **Use when:**
+
 - You want to preserve old data as-is
 - You're okay with graphs showing a discontinuity
 - You want to document when the change occurred
@@ -483,7 +505,7 @@ sensor:
     # Data after this date is in Wh
 ```
 
-4. **Create a markdown note** (optional):
+1. **Create a markdown note** (optional):
 
 ```markdown
 # Sensor Unit Changes
@@ -498,6 +520,7 @@ To query both periods:
 ```
 
 **Result:**
+
 - Old statistics: Remain in kWh (metadata_id = 42)
 - New statistics: Created in Wh (metadata_id = 93)
 - Graphs show discontinuity at change date
@@ -586,41 +609,49 @@ LIMIT 10;
 ### Mistake 1: Changing Only the UI Setting
 
 **What people do:**
+
 - Go to Settings → Entities → sensor → ⚙️
 - Change unit
 - Click Update
 - Expect it to work
 
 **What happens:**
+
 - Nothing (as documented above)
 
 **Solution:**
+
 - Use one of the methods above (Options A-D)
 
 ### Mistake 2: Forgetting to Convert Existing Data
 
 **What people do:**
+
 - Update `statistics_meta.unit_of_measurement`
 - Restart HA
 - Wonder why values look wrong
 
 **What happens:**
+
 - UI shows new unit (e.g., Wh)
 - But values still in old scale (e.g., 72.5 instead of 72500)
 - Graphs misleading
 
 **Solution:**
+
 - Always convert existing statistics values
 - Or delete statistics and start fresh
 
 ### Mistake 3: Wrong Conversion Factor
 
 **Examples:**
+
 - Using × 100 instead of × 1000 (kWh → Wh)
 - Forgetting temperature formula needs addition: (C × 9/5) + 32
 - Reversing multiply/divide direction
 
 **Solution:**
+
 - Double-check conversion factor
 - Test on a few sample values first
 - Verify results make sense
@@ -628,11 +659,13 @@ LIMIT 10;
 ### Mistake 4: Not Backing Up First
 
 **What happens:**
+
 - Apply wrong conversion
 - Corrupt all historical data
 - No way to undo
 
 **Solution:**
+
 - **ALWAYS backup before SQL modifications**
 - Test queries on a copy first
 - Keep multiple backup versions
@@ -640,15 +673,18 @@ LIMIT 10;
 ### Mistake 5: Updating statistics but Not integration
 
 **What people do:**
+
 - Change statistics_meta to Wh
 - Leave integration sending kWh
 
 **What happens:**
+
 - Historical data in Wh scale
 - New data arriving in kWh scale
 - New statistics recorded with wrong values
 
 **Solution:**
+
 - Ensure integration sends the same unit as statistics_meta
 - Check Developer Tools → States after changes
 
@@ -708,6 +744,7 @@ template:
 **Possible causes:**
 
 1. **Statistics metadata not updated:**
+
    ```sql
    -- Check current value
    SELECT unit_of_measurement 
@@ -721,6 +758,7 @@ template:
    - Try incognito/private window
 
 3. **Home Assistant cache:**
+
    ```bash
    # Restart HA
    ha core restart
@@ -761,6 +799,7 @@ WHERE statistic_id = 'sensor.energy_meter';
 **Solutions:**
 
 **Option 1: Merge the data (advanced)**
+
 1. Convert old statistics to new unit
 2. Reassign old statistics to new metadata_id
 3. Delete old metadata
@@ -777,6 +816,7 @@ DELETE FROM statistics_meta WHERE id = 42;
 ```
 
 **Option 2: Keep both** (document the split)
+
 - Query old data: `WHERE metadata_id = 42`
 - Query new data: `WHERE metadata_id = 93`
 - Note in documentation when split occurred
@@ -784,6 +824,7 @@ DELETE FROM statistics_meta WHERE id = 42;
 ### Problem: Statistics Not Generating After Changes
 
 **Symptoms:**
+
 - Sensor shows correct unit in Developer Tools
 - But no statistics appearing
 - Empty statistics_meta or no new records
@@ -791,6 +832,7 @@ DELETE FROM statistics_meta WHERE id = 42;
 **Possible causes:**
 
 1. **Missing state_class:**
+
    ```yaml
    # Check your sensor has this:
    state_class: measurement  # or total_increasing
@@ -802,6 +844,7 @@ DELETE FROM statistics_meta WHERE id = 42;
    - Check logs for warnings
 
 3. **Recorder exclusion:**
+
    ```yaml
    # Check recorder config doesn't exclude this entity
    recorder:
@@ -811,12 +854,14 @@ DELETE FROM statistics_meta WHERE id = 42;
    ```
 
 4. **Statistics compiler paused:**
+
    ```bash
    # Check HA logs
    grep "statistics" /config/home-assistant.log
    ```
 
 **Solutions:**
+
 - Verify sensor configuration
 - Check Developer Tools → States for valid numeric values
 - Wait 5-10 minutes for statistics to generate
@@ -846,12 +891,14 @@ DELETE FROM statistics_meta WHERE id = 42;
 ### When in Doubt
 
 **Simplest safe approach:**
+
 1. Backup database
 2. Delete statistics (Option B)
 3. Let them regenerate with current unit
 4. Accept loss of historical data
 
 **Most complete approach:**
+
 1. Backup database
 2. SQL migration (Option C)
 3. Convert all historical values
@@ -862,15 +909,18 @@ DELETE FROM statistics_meta WHERE id = 42;
 ## Additional Resources
 
 **Official Documentation:**
+
 - [Home Assistant Statistics](https://www.home-assistant.io/docs/backend/database/#statistics)
 - [Recorder Integration](https://www.home-assistant.io/integrations/recorder/)
 - [Sensor Entity](https://developers.home-assistant.io/docs/core/entity/sensor/)
 
 **Community:**
+
 - [Home Assistant Forum - Statistics](https://community.home-assistant.io/c/configuration/statistics)
 - [GitHub - Recorder Issues](https://github.com/home-assistant/core/labels/integration%3A%20recorder)
 
 **Related Documentation Sections:**
+
 - [Part 1: Foundational Concepts](part1_fundamental_concepts.md) - Understanding states vs statistics
 - [Part 2: Statistics Generation](part2_statistics_generation.md) - How statistics are created
 - [Part 4: Best Practices](part4_practices_troubleshooting.md) - Choosing state_class correctly
