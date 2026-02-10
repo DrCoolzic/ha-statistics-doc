@@ -466,19 +466,19 @@ statistics_meta table:
 ```sql
 -- Find statistics for entities that no longer exist in Home Assistant
 -- indicates number of records attached to the deleted entity
-SELECT 
-  sm.statistic_id,
-  sm.source,
-  sm.unit_of_measurement,
-  COUNT(s.id) as record_count,
-  datetime(MIN(s.start_ts), 'unixepoch', 'localtime') as first_record,
-  datetime(MAX(s.start_ts), 'unixepoch', 'localtime') as last_record
+SELECT sm.id as stats_meta_id, 
+       sm.statistic_id, 
+       sm.source, 
+       sm.unit_of_measurement,
+       COUNT(s.id) as record_count,
+       MIN(datetime(s.start_ts, 'unixepoch')) as first_record,
+       MAX(datetime(s.start_ts, 'unixepoch')) as last_record
 FROM statistics_meta sm
+LEFT JOIN states_meta stm ON sm.statistic_id = stm.entity_id
 LEFT JOIN statistics s ON sm.id = s.metadata_id
-LEFT JOIN states_meta stm ON sm.statistic_id = stm.metadata_id
-WHERE stm.metadata_id IS NULL  -- Entity doesn't exist in states_meta
-GROUP BY sm.statistic_id
-ORDER BY last_record DESC;
+WHERE stm.entity_id IS NULL
+GROUP BY sm.id, sm.statistic_id, sm.source, sm.unit_of_measurement
+ORDER BY sm.statistic_id;
 ```
 
 | statistic_id           | record_count | Issue |
@@ -491,6 +491,33 @@ ORDER BY last_record DESC;
 TODO PLACEHOLDER
 
 ---
+
+## **5.x Orphan Entities** TODO bump number below
+
+<a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+Orphaned entities are entities that are no longer claimed by an integration. This can happen when an integration is removed or when an integration is no longer working. Home Assistant considers an entity only orphaned if it has been unclaimed since the last restart of Home Assistant.
+
+TODO ...
+
+<a id="orphan_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
+
+TODO REWRITE properly: Seems like at restart HA has a way to detect orphan (?). Based on this information it updates the states table by setting it to NULL. Therefore the way to detect orphan it to see entities with NULL state. The following query is performance optimized :)
+
+```sql
+SELECT stm.entity_id,
+       st.state,
+       datetime(st.last_updated_ts, 'unixepoch') as last_updated,
+       sm.statistic_id,
+       COUNT(s.id) as statistics_count
+FROM states_meta stm
+JOIN states st ON stm.metadata_id = st.metadata_id
+LEFT JOIN statistics_meta sm ON stm.entity_id = sm.statistic_id
+LEFT JOIN statistics s ON sm.id = s.metadata_id
+WHERE st.state IS NULL
+  AND st.state_id = (SELECT state_id FROM states WHERE metadata_id = stm.metadata_id ORDER BY last_updated_ts DESC LIMIT 1)
+GROUP BY stm.entity_id, st.state, st.last_updated_ts, sm.statistic_id
+ORDER BY st.last_updated_ts DESC;
+```
 
 ## **5.4 Unit of Measurement Changed**
 
