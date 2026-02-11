@@ -18,10 +18,8 @@ A comprehensive documentation site explaining how statistics are generated, stor
 | [Part 3 — Working with Statistics](./docs/doc/part3_working_with_statistics.md) | Dashboards, graphs, and UI display |
 | [Part 4 — Best Practices & Troubleshooting](./docs/doc/part4_practices_troubleshooting.md) | Choosing state_class, recorder config, common pitfalls |
 | [Part 5 — Find & Fix Statistics Errors](./docs/doc/part5_find_fix.md) | Detect and repair data gaps, spikes, orphaned entries, and more |
-| [Appendix 1 — Units of Measurement](./docs/doc/apdx_1_set_units.md) | How HA selects, stores, and displays units |
-| [Appendix 2 — Changing Units](./docs/doc/apdx_2_change_units.md) | Changing units on sensors with existing statistics |
-| [Appendix 3 — Mysterious Table Fields](./docs/doc/apdx_3_stat_fields.md) | Deep dive into `created_ts` and `mean_weight` |
-| [Appendix 4 — Statistics Domains](./docs/doc/apdx_4_stat_domains.md) | Statistics from non-sensor domains |
+| [Appendix 1 — Mysterious Table Fields](./docs/doc/apdx1_stat_fields.md) | Deep dive into `created_ts` and `mean_weight` |
+| [Appendix 2 — Statistics Domains](./docs/doc/apdx2_stat_domains.md) | Statistics from non-sensor domains |
 | [Quick Reference Guide](./docs/doc/quick_reference_guide.md) | Cheat sheet with key concepts and decision tables |
 | [Glossary](./docs/doc/glossary.md) | Terminology reference |
 
