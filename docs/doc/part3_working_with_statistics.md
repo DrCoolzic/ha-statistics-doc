@@ -27,11 +27,15 @@ Short list of cards / Panels to display statistics
   Display entity state changes over time by reading information from the states table. Automatically switches to statistics-based rendering for date ranges beyond the `states` table retention period.
 - [History graphs](https://www.home-assistant.io/dashboards/history-graph/)
   Is used to display **measurement** type statistics. It uses the sates table to show detailed information during the retention period and automatically switches to long term statistic for longer period.
+
   ![measurement](../assets/history_graph.png)
+  
 - [Statistics graph card](https://www.home-assistant.io/dashboards/statistics-graph)
   uses info from the long term statistic table to display **measurement** or **counter** type statistics.
   For **measurement** it can display the min, max, and mean information. In this case the chart type is usually set to line
-  ![measurement](../assets/measure_stat.png)  
+
+  ![measurement](../assets/measure_stat.png) 
+
   For **counter** it can display the state, sum, and delta change. To display change the chart type is usually set to bar and for sum it is set to line. Note that the sum displayed in period is not what is stored in the table as it always start at 0. This allow to more easily  read the consumption over the period.
 
   ![counter_change](../assets/counter_change.png) ![counter_sum](../assets/counter_sum.png)

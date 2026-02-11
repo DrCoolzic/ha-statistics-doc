@@ -218,3 +218,6 @@ Now you get statistics showing how often and how much you manually adjust temper
 - A `state_class` attribute
 
 ...can generate statistics, regardless of domain! The most common non-sensor examples are **`number`** and **`input_number`** entities used for tracking configuration changes, setpoints, and user inputs over time.
+
+**Previous** - [Appendix 1: Statistics Fields](apdx1_stat_fields.md)
+**Next** - [Appendix 3: Setting Units of Measurement](apdx3_set_units.md)

@@ -47,14 +47,14 @@ hide:
     Choosing the right state_class, recorder configuration, and common pitfalls.</p>
     <p><a href="doc/part5_find_fix"><strong>Part 5 — Find & Fix Statistics Errors</strong></a><br/>
     Detect and repair data gaps, spikes, orphaned entries, counter resets, and more.</p>
-    <p><a href="doc/apdx_1_set_units"><strong>Appendix 1 — Units of Measurement</strong></a><br/>
-    How HA selects, stores, and displays units — and how to control them.</p>
-    <p><a href="doc/apdx_2_change_units"><strong>Appendix 2 — Changing Units</strong></a><br/>
-    Step-by-step guide to changing units on sensors that already have statistics.</p>
-    <p><a href="doc/apdx_3_stat_fields"><strong>Appendix 3 — Mysterious Table Fields</strong></a><br/>
+    <p><a href="doc/apdx1_stat_fields"><strong>Appendix 1 — Mysterious Table Fields</strong></a><br/>
     Deep dive into <code>created_ts</code> and <code>mean_weight</code> fields.</p>
-    <p><a href="doc/apdx_4_stat_domains"><strong>Appendix 4 — Statistics Domains</strong></a><br/>
+    <p><a href="doc/apdx2_stat_domains"><strong>Appendix 2 — Statistics Domains</strong></a><br/>
     Examples of statistics from non-sensor domains (number, input_number, counter).</p>
+    <!-- <p><a href="doc/apdx3_set_units"><strong>Appendix 3 — Units of Measurement</strong></a><br/>
+    How HA selects, stores, and displays units — and how to control them.</p>
+    <p><a href="doc/apdx4_change_units"><strong>Appendix 4 — Changing Units</strong></a><br/>
+    Step-by-step guide to changing units on sensors that already have statistics.</p> -->
     <p><a href="doc/quick_reference_guide"><strong>Quick Reference Guide</strong></a><br/>
     Cheat sheet with key concepts, common queries, and decision tables at a glance.</p>
     <hr/>

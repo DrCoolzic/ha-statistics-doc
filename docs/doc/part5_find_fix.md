@@ -6,7 +6,7 @@ Over time, errors may appear in the statistical database for various reasons. Th
 
 **Quick jump table**
 
-| Error Type | Detection | Fix |
+| Error Type Definition| Detection | Fix |
 | --- | --- | --- |
 | [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | [gap_fix](#gap_fix) |
 | [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | [spike_fix](#spike_fix) |
@@ -48,8 +48,8 @@ We are going to cover the most common errors in this document and provide inform
 
 >**Note about Unit of Measurement**
     Unit of Measurement selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
-    [Appendix 1: How HA Selects and Displays Units](apdx_1_set_units.md) and
-    [Appendix 2: Changing Units of Measurement](apdx_2_change_units.md).
+    [Appendix 1: How HA Selects and Displays Units](apdx3_set_units.md) and
+    [Appendix 2: Changing Units of Measurement](apdx4_change_units.md).
 
 ---
 
@@ -1083,4 +1083,4 @@ WHERE id NOT IN (SELECT DISTINCT metadata_id FROM statistics)
 ---
 
 **Previous** - [Part 4: Best Practices and Troubleshooting](part4_practices_troubleshooting.md)
-**Next** - [Appendix 1: Setting Units of Measurement](apdx_1_set_units.md)
+**Next** - [Appendix 1: Mysterious Statistics Fields](apdx1_stat_fields.md)

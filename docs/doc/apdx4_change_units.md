@@ -930,5 +930,4 @@ DELETE FROM statistics_meta WHERE id = 42;
 
 ---
 
-**Previous** - [Appendix 1: Setting Units](apdx_1_set_units.md)  
-**Next** - [Appendix 3: Mysterious Statistics fields](apdx_3_stat_fields.md)
+**Previous** - [Appendix 2: Setting Units](apdx3_set_units.md)  

@@ -640,7 +640,7 @@ Use this table to decide how to handle units:
 | **ESPHome sensor** | Convert in ESPHome config | Cleaner, less HA overhead |
 | **Integration with config** | Check integration docs | May support unit selection |
 | **Need different display unit** | Template sensor + conversion | Reliable, always works |
-| **Already has statistics** | See [Part X: Changing Units]( apdx_2_change_units.md) | Complex, requires SQL |
+| **Already has statistics** | See [Part X: Changing Units]( apdx4_change_units.md) | Complex, requires SQL |
 | **Multiple conversions needed** | Create multiple template sensors | One per unit |
 | **Just want display change** | Try entity settings (if no stats) | May work if lucky |
 
@@ -680,7 +680,7 @@ WHERE statistic_id = 'sensor.your_sensor';
 
 If this shows kWh, that's your answer.
 
-**Solution:** See [Part X: Changing Units]( apdx_2_change_units.md)
+**Solution:** See [Part X: Changing Units]( apdx4_change_units.md)
 
 ### Problem: "Values don't match unit"
 
@@ -968,7 +968,7 @@ template:
 → Does it have statistics?
 
 - **No:** Try entity settings (may work)
-- **Yes:** See [Changing Units document]( apdx_2_change_units.md) (requires SQL or deletion)
+- **Yes:** See [Changing Units document]( apdx4_change_units.md) (requires SQL or deletion)
 
 **"Integration reports wrong unit for me"**
 
@@ -1038,12 +1038,12 @@ mL_from_L: "{{ l_value | float * 1000 }}"
 
 ## Related Documentation
 
-- **[Part X: Changing Units of Measurement]( apdx_2_change_units.md)** - Detailed guide for existing sensors
+- **[Appendix 4: Changing Units of Measurement]( apdx4_change_units.md)** - Detailed guide for existing sensors
 - **[Part 1: Foundational Concepts](part1_fundamental_concepts.md)** - Understanding entities and states
 - **[Part 2: Statistics Generation](part2_statistics_generation.md)** - How statistics are created
 - **[Part 4: Best Practices](part4_practices_troubleshooting.md)** - Choosing state_class correctly
 
 ---
 
-**Previous** - [Part 5: Finding and Fixing Issues](part5_find_fix.md)
-**Next** - [Appendix 2: Changing Units of Measurement](apdx_2_change_units.md)
+**Previous** - [Appendix 2: Statistics Domains](apdx2_stat_domains.md)
+**Next** - [Appendix 4: Changing Units of Measurement](apdx4_change_units.md)

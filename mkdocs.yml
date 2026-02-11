@@ -29,11 +29,11 @@ nav:
       - Part 2 - Statistics Generation: doc/part2_statistics_generation.md
       - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
-      - Part 5 - Finding & Fixing Statistics Errors: doc/part5_find_fix.md
-      - Appendix 1 - Units of Measurement: doc/apdx_1_set_units.md
-      - Appendix 2 - Change Unit of Measurement: doc/apdx_2_change_units.md
-      - Appendix 3 - Mysterious Table Fields: doc/apdx_3_stat_fields.md
-      - Appendix 4 - Statistics domains: doc/apdx_4_stat_domains.md
+      - Part 5 - Find & Fix Statistics Errors: doc/part5_find_fix.md
+      - Appendix 1 - Mysterious Table Fields: doc/apdx1_stat_fields.md
+      - Appendix 2 - Statistics domains: doc/apdx2_stat_domains.md
+      # - Appendix 3 - Units of Measurement: doc/apdx3_set_units.md
+      # - Appendix 4 - Change Unit of Measurement: doc/apdx4_change_units.md
       - Quick Reference Guide: doc/quick_reference_guide.md
       - Glossary: doc/glossary.md
   - SQL Examples:
