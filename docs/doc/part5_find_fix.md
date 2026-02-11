@@ -412,6 +412,8 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 <a id="deleted_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
 Statistics remain in the database for entities that no longer exist in Home Assistant.
 
+An entity is considered **truly deleted** when it has been removed from the **Entity Registry** — the authoritative source that tracks all registered entities in HA. This is distinct from simply being absent from the `states_meta` table (see [Important limitation](#deleted_limitation) below).
+
 <a id="deleted_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
 - Entity was deleted or removed from configuration
@@ -440,6 +442,8 @@ statistics_meta table:
 
 <a id="deleted_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
+The SQL query below finds `statistics_meta` entries whose `statistic_id` does not appear in `states_meta`. This is a **useful approximation** but has an important limitation — see the warning below.
+
 ```sql
 -- Find statistics for entities that no longer exist in Home Assistant
 -- indicates number of records attached to the deleted entity
@@ -462,6 +466,24 @@ ORDER BY sm.statistic_id;
 |------------------------|--------------|-------|
 | sensor.old_temperature | 8760         | ← Has lots of data |
 | sensor.failed_sensor   | 0            | ← Never generated data |
+
+<a id="deleted_limitation"></a>
+
+!!! warning "Important limitation: `states_meta` is not a reliable indicator of entity existence"
+    The query above checks whether a `statistic_id` is present in `states_meta`. However, **absence from `states_meta` does not necessarily mean the entity has been deleted**. The `states_meta` table only contains entries for entities that have had state changes recorded by the Recorder. An entity can be missing from `states_meta` while still being valid and active in Home Assistant in several situations:
+
+    - **Purged history**: The Recorder's purge mechanism may have removed old `states` and `states_meta` entries, even though the entity still exists and is active.
+    - **Temporarily unavailable integrations**: If an integration was offline or unavailable for a period, its entities may not have generated any state changes yet.
+    - **Newly added entities**: An entity that was just registered but has not yet reported a state will not appear in `states_meta`.
+    - **Excluded from Recorder**: Entities explicitly excluded from the Recorder via `exclude` filters will never appear in `states_meta`, but they still exist in HA.
+
+    The only **authoritative source** for determining whether an entity truly exists is the **Entity Registry** (`entity_registry`), which is managed in-memory by HA Core and persisted in `.storage/core.entity_registry`. This registry is **not accessible via SQL** — it requires the HA Python API (e.g., `entity_registry.async_get(entity_id)`).
+
+    **Recommendation**: Treat the SQL query results as *candidates* for deletion, not as a definitive list. Before deleting statistics, verify that the entity is genuinely absent by checking:
+
+    1. **Developer Tools → States**: Search for the `statistic_id` — if it appears, the entity still exists.
+    2. **Settings → Devices & Services → Entities**: Search for the entity — if listed, it is still registered.
+    3. **Developer Tools → Statistics**: If the entity shows a "Fix issue" button with a "delete" option, HA itself considers it deleted.
 
 <a id="deleted_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Deleted Entities Fix</span>
 
