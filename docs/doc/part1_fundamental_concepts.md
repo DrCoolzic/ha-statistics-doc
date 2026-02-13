@@ -35,7 +35,7 @@ The frequency of state updates varies by integration:
 
 HA Core can run without persistent history. In this mode, you always know the current state of your system, but not how you arrived there. The Recorder integration provides this historical context.
 
-> **Further Reading**: For more details, see the [Core Architecture](https://developers.home-assistant.io/docs/architecture_index) and [Entities: integrating devices & services](https://developers.home-assistant.io/docs/architecture/devices-and-services/) documentation.
+> **Further Reading**: For more details, see the [Core Architecture](https://developers.home-assistant.io/docs/architecture_index), [Sensor  entity](https://developers.home-assistant.io/docs/core/entity/sensor/), [Entities: integrating devices & services](https://developers.home-assistant.io/docs/architecture/devices-and-services/), and [States](https://developers.home-assistant.io/docs/dev_101_states/) documentation.
 
 ---
 
@@ -106,23 +106,6 @@ Let's examine how state tracking works with practical examples.
 ### Apparent Power Consumption
 
 Consider an integration that polls the instantaneous apparent power consumption (a "measurement" type sensor) of a house every minute .
-We can query the state table using:
-
-```sql
-SELECT 
-    sm.entity_id,
-    s.state,
-    datetime(s.last_updated_ts, 'unixepoch', 'localtime') as last_updated,
-    datetime(COALESCE(s.last_changed_ts, s.last_updated_ts), 'unixepoch', 'localtime') as last_changed,
-    datetime(s.last_reported_ts, 'unixepoch', 'localtime') as last_reported
-FROM states s
-INNER JOIN states_meta sm ON s.metadata_id = sm.metadata_id
-WHERE sm.entity_id = 'sensor.linky_sinsts' 
-AND s.last_updated_ts BETWEEN 
-    strftime('%s', '2026-01-27 13:00:00') 
-    AND strftime('%s', '2026-01-27 14:00:00')
-ORDER BY s.last_updated_ts;
-```
 
 | entity_id           | state | last_updated    | last_changed    | last_reported   |
 | --------------------- | ------- | ----------------- | ----------------- | ----------------- |
@@ -153,5 +136,13 @@ The two entities presented above generates statistics that belong to the **measu
 | sensor.linky_east | 72199520 | 1/27/2026 13:01 | 1/27/2026 13:01 | 1/27/2026 13:01 |
 | ...               | ...      | ...             | ...             | ...             |
 
-**Previous** - [Overview](overview.md)
-**Next** - [Part 2: Statistics Generation](part2_statistics_generation.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../overview/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Overview</span>
+  </a>
+  <a href="../part2_statistics_generation/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Part 2: Statistics Generation »</span>
+  </a>
+</div>

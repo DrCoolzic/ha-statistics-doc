@@ -1,4 +1,4 @@
-# MysteriousStatistics Fields: `created_ts` and `mean_weight`
+# Appendix 1: MysteriousStatistics Fields: `created_ts` and `mean_weight`
 
 ## Overview
 
@@ -372,5 +372,13 @@ Understanding these fields helps with:
 3. GitHub Issue #142408: mean_weight schema migration issues
 4. Home Assistant Database Schema: <https://www.home-assistant.io/docs/backend/database/>
 
-**Previous** - [Part 5: Finding and Fixing Issues](part5_find_fix.md)
-**Next** - [Appendix 2: Statistics Domains](apdx2_stat_domains.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../part5_find_fix/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Part 5: Find & Fix Statistics Errors</span>
+  </a>
+  <a href="../apdx2_stat_domains/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Appendix 2: Statistics Domains »</span>
+  </a>
+</div>

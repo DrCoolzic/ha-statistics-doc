@@ -324,5 +324,13 @@ sensor:
     state_class: measurement  # ✅ Works!
 ```
 
-**Previous** - [Part 3: Working with Statistics](part3_working_with_statistics.md)
-**Next** - [Part 5: Find & Fix Statistics Errors](part5_find_fix.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../part3_working_with_statistics/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Part 3: Working with Statistics</span>
+  </a>
+  <a href="../part5_find_fix/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Part 5: Find & Fix Statistics Errors »</span>
+  </a>
+</div>

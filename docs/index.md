@@ -35,8 +35,8 @@ hide:
   </div>
   <div>
     <h2>Documentation structure</h2>
-    <p><a href="doc/overview"><strong>Overview</strong></a><br/>
-    Start here — a high-level map of all documentation sections and what they cover.</p>
+    <p><a href="doc/overview"><strong>Overview  ← Start here</strong></a><br/>
+    A high-level map of all documentation sections and what they cover.</p>
     <p><a href="doc/part1_fundamental_concepts"><strong>Part 1 — Foundational Concepts</strong></a><br/>
     Entities, states, the recorder, and how they relate to statistics.</p>
     <p><a href="doc/part2_statistics_generation"><strong>Part 2 — Statistics Generation</strong></a><br/>

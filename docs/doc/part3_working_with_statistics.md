@@ -34,7 +34,7 @@ Short list of cards / Panels to display statistics
   uses info from the long term statistic table to display **measurement** or **counter** type statistics.
   For **measurement** it can display the min, max, and mean information. In this case the chart type is usually set to line
 
-  ![measurement](../assets/measure_stat.png) 
+  ![measurement](../assets/measure_stat.png)
 
   For **counter** it can display the state, sum, and delta change. To display change the chart type is usually set to bar and for sum it is set to line. Note that the sum displayed in period is not what is stored in the table as it always start at 0. This allow to more easily  read the consumption over the period.
 
@@ -69,5 +69,13 @@ External statistics are useful for:
 - Creating custom aggregations
 - Forecast data from external services
 
-**Previous** - [Part 2: Statistics Generation](part2_statistics_generation.md)
-**Next** - [Part 4 Best Practices and Troubleshooting.md](part4_practices_troubleshooting.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../part2_statistics_generation/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Part 2: Statistics Generation</span>
+  </a>
+  <a href="../part4_practices_troubleshooting/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Part 4: Best Practices and Troubleshooting »</span>
+  </a>
+</div>

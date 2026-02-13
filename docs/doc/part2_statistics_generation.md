@@ -39,7 +39,7 @@ They represent a **measurement**
 - The `device_class` must *not* be a non-numeric type such as `date`, `enum`, `timestamp`, or certain special-purpose classes like `energy`, `gas`, `monetary`, `volume`, or `water` that have specific handling requirements.
 - Must have a `unit_of_measurement` defined
 
-> **Note:** See the [official sensor device classes](https://www.home-assistant.io/integrations/sensor/#device-class) for the current complete list.
+> **Note:** See the [official sensor device classes](https://www.home-assistant.io/integrations/sensor/#device-class) for the current complete `device_class` list.
 
 **What is tracked:**
 Home Assistant tracks the **min**, **max**, and **mean** values during each statistics period, updating them every 5 minutes.
@@ -286,22 +286,6 @@ Where:
 
 **Example: Hourly Energy Consumption**
 
-```sql
-SELECT 
-  sm.statistic_id,
-  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
-  s.sum as cumulative_sum,
-  s.sum - LAG(s.sum) OVER (ORDER BY s.start_ts) as period_consumption
-FROM statistics s
-INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
-WHERE sm.statistic_id = 'sensor.linky_east'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 12:00:00'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 15:00:00'
-ORDER BY s.start_ts;
-```
-
-Result:
-
 | statistic_id      | period_start    | cumulative_sum | period_consumption |
 | ------------------- | ----------------- | ---------------- | -------------------- |
 | sensor.linky_east | 1/27/2026 12:00 | 294136         | NULL               |
@@ -528,5 +512,13 @@ We now look at what is stored in the statistics_short_term table and statistics 
 | sensor.linky_east | 1/27/2026 13:00 | 1/27/2026 14:00 | 72201200 | 295880 | 1744               |
 | sensor.linky_east | 1/27/2026 14:00 | 1/27/2026 15:00 | 72202864 | 297544 | 1664               |
 
-**Previous** - [Part 1: Fundamental Concepts](part1_fundamental_concepts.md)
-**Next** - [Part 3: Working with Statistics](part3_working_with_statistics.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../part1_fundamental_concepts/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Part 1: Foundational Concepts</span>
+  </a>
+  <a href="../part3_working_with_statistics/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Part 3: Working with Statistics »</span>
+  </a>
+</div>

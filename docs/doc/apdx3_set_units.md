@@ -1,6 +1,7 @@
-# Setting Units of Measurement
+# Appendix 3: Setting Units of Measurement
 
-THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED - Probably contains inaccurate information
+!!! Danger "Under construction - Probably contains inaccurate information"
+    THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED
 
 ## Overview
 
@@ -1045,5 +1046,13 @@ mL_from_L: "{{ l_value | float * 1000 }}"
 
 ---
 
-**Previous** - [Appendix 2: Statistics Domains](apdx2_stat_domains.md)
-**Next** - [Appendix 4: Changing Units of Measurement](apdx4_change_units.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../apdx2_stat_domains/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Appendix 2: Statistics Domains</span>
+  </a>
+  <a href="../apdx4_change_units/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Appendix 4: Changing Units of Measurement »</span>
+  </a>
+</div>

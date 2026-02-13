@@ -6,17 +6,17 @@ Over time, errors may appear in the statistical database for various reasons. Th
 
 **Quick jump table**
 
-| Error Type Definition| Detection | Fix |
-| --- | --- | --- |
-| [Missing Statistics (Data Gaps)](#51-missing-statistics) | [gap_detect](#gap_detect) | [gap_fix](#gap_fix) |
-| [Invalid Data / Spikes](#52-invalid-data--spikes) | [spike_detect](#spike_detect) | [spike_fix](#spike_fix) |
-| [Statistics on Deleted Entities](#53-statistics-on-deleted-entities) | [deleted_detect](#deleted_detect) | [deleted_fix](#deleted_fix) |
-| [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities) | [orphan_detect](#orphan_detect) | [orphan_fix](#orphan_fix) |
-| [Renamed Entities](#55-renamed-entities) | [renamed_detect](#renamed_detect) | [renamed_fix](#renamed_fix) |
-| [Counter Reset Not Detected](#56-counter-reset-not-detected) | [reset_detect](#reset_detect) | [reset_fix](#reset_fix) |
-| [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic) | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) |
-| [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect) | [neg_fix](#neg_fix) |
-| [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata) | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) |
+| Error Type Definition                                                          | Detection                           | Fix                           |
+| -------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------- |
+| [Missing Statistics (Data Gaps)](#51-missing-statistics)                       | [gap_detect](#gap_detect)           | [gap_fix](#gap_fix)           |
+| [Invalid Data / Spikes](#52-invalid-data--spikes)                              | [spike_detect](#spike_detect)       | [spike_fix](#spike_fix)       |
+| [Statistics on Deleted Entities](#53-statistics-on-deleted-entities)           | [deleted_detect](#deleted_detect)   | [deleted_fix](#deleted_fix)   |
+| [Statistics on Orphaned Entities](#54-statistics-on-orphaned-entities)         | [orphan_detect](#orphan_detect)     | [orphan_fix](#orphan_fix)     |
+| [Renamed Entities](#55-renamed-entities)                                       | [renamed_detect](#renamed_detect)   | [renamed_fix](#renamed_fix)   |
+| [Counter Reset Not Detected](#56-counter-reset-not-detected)                   | [reset_detect](#reset_detect)       | [reset_fix](#reset_fix)       |
+| [Wrong Mean Type](#57-wrong-mean-type-circular-vs-arithmetic)                  | [meantype_detect](#meantype_detect) | [meantype_fix](#meantype_fix) |
+| [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect)           | [neg_fix](#neg_fix)           |
+| [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata)               | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) |
 
 Errors can be detected by using Developer Tools, SQL queries, or monitoring logs... Some errors can be fixed automatically, others require manual intervention. But the **best practice** is to prevent errors in the first place.
 
@@ -46,10 +46,10 @@ Errors can be detected by using Developer Tools, SQL queries, or monitoring logs
 Each error manifests differently in the UI and database.
 We are going to cover the most common errors in this document and provide information on how to fix them.
 
->**Note about Unit of Measurement**
-    Unit of Measurement selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
-    [Appendix 1: How HA Selects and Displays Units](apdx3_set_units.md) and
-    [Appendix 2: Changing Units of Measurement](apdx4_change_units.md).
+> **Note about Unit of Measurement**
+> Unit of Measurement selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
+> [Appendix 3: How HA Selects and Displays Units](apdx3_set_units.md) and
+> [Appendix 4: Changing Units of Measurement](apdx4_change_units.md).
 
 ---
 
@@ -57,7 +57,7 @@ We are going to cover the most common errors in this document and provide inform
 
 [Description](#gap_description) | [Causes](#gap_causes) | [Manifestation](#gap_manifestation) | [Detection](#gap_detect) | [Fix](#gap_fix)
 
-<a id="gap_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="gap_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Periods where no statistics were recorded despite the entity existing and presumably having data. This is a common issue when the integration was not running or home assistant was shutdown.
 
 <a id="gap_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -122,12 +122,12 @@ ORDER BY gap_seconds DESC  -- Show largest gaps first
 LIMIT 50;
 ```
 
-| period | mean | gap_hours | gap_severity |
-|---|---|---|---|
-|2025-01-22 19:00:00.000000 | 17.69790881333039 | 7 | ⚠️ LARGE GAP (>2 hours) |
-|2023-12-03 17:00:00.000000 | 19.725162957811452 | 3 | ⚠️ LARGE GAP (>2 hours) |
-|2023-09-21 16:00:00.000000 | 22.09918343405555 | 2 | ⚠️ GAP DETECTED |
-|2023-02-05 10:00:00.000000 | 18.800000000000004 | 2 | ⚠️ GAP DETECTED |
+| period                     | mean               | gap_hours | gap_severity              |
+| ---------------------------- | -------------------- | ----------- | --------------------------- |
+| 2025-01-22 19:00:00.000000 | 17.69790881333039  | 7         | ⚠️ LARGE GAP (>2 hours) |
+| 2023-12-03 17:00:00.000000 | 19.725162957811452 | 3         | ⚠️ LARGE GAP (>2 hours) |
+| 2023-09-21 16:00:00.000000 | 22.09918343405555  | 2         | ⚠️ GAP DETECTED         |
+| 2023-02-05 10:00:00.000000 | 18.800000000000004 | 2         | ⚠️ GAP DETECTED         |
 
 <a id="gap_detect_counter"></a>**Query for Counter**
 
@@ -163,10 +163,10 @@ ORDER BY gap_hours DESC
 LIMIT 50;
 ```
 
-| last before gap | state before | sum before | gap indicator | gap hours | first after gap | state after | sum after | sum change across gap | gap impact |
-|---|---|---|---|---|---|---|---|--- | --- |
-| 2026-01-15 08:00:00 | 1220.5 | 1220.5 | ⚠️ GAP  | 6.0 | 2026-01-15 14:00:00 | 1250.5 | 1250.5 | 30.0 | ⚠️ Consumption during gap |
-| 2026-01-20 03:00:00    | 1305.2       | 1305.2    | ⚠️ GAP | 3.0       | 2026-01-20 06:00:00    | 1305.2      | 1305.2    | 0.0        | ❌ No consumption recorded |
+| last before gap     | state before | sum before | gap indicator | gap hours | first after gap     | state after | sum after | sum change across gap | gap impact                  |
+| --------------------- | -------------- | ------------ | --------------- | ----------- | --------------------- | ------------- | ----------- | ----------------------- | ----------------------------- |
+| 2026-01-15 08:00:00 | 1220.5       | 1220.5     | ⚠️ GAP      | 6.0       | 2026-01-15 14:00:00 | 1250.5      | 1250.5    | 30.0                  | ⚠️ Consumption during gap |
+| 2026-01-20 03:00:00 | 1305.2       | 1305.2     | ⚠️ GAP      | 3.0       | 2026-01-20 06:00:00 | 1305.2      | 1305.2    | 0.0                   | ❌ No consumption recorded  |
 
 <a id="gap_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Missing Statistics Fix</span>
 
@@ -185,13 +185,13 @@ The fix is to **insert interpolated rows** that distribute the consumption evenl
 
 The interpolated rows to insert would be:
 
-| start_ts (as datetime) | state | sum | mean | min | max |
-|---|---|---|---|---|---|
-| 2026-01-15 09:00:00 | 1226.5 | 1226.5 | NULL | NULL | NULL |
-| 2026-01-15 10:00:00 | 1232.5 | 1232.5 | NULL | NULL | NULL |
-| 2026-01-15 11:00:00 | 1238.5 | 1238.5 | NULL | NULL | NULL |
-| 2026-01-15 12:00:00 | 1244.5 | 1244.5 | NULL | NULL | NULL |
-| 2026-01-15 13:00:00 | 1250.5 | 1250.5 | NULL | NULL | NULL |
+| start_ts (as datetime) | state  | sum    | mean | min  | max  |
+| ------------------------ | -------- | -------- | ------ | ------ | ------ |
+| 2026-01-15 09:00:00    | 1226.5 | 1226.5 | NULL | NULL | NULL |
+| 2026-01-15 10:00:00    | 1232.5 | 1232.5 | NULL | NULL | NULL |
+| 2026-01-15 11:00:00    | 1238.5 | 1238.5 | NULL | NULL | NULL |
+| 2026-01-15 12:00:00    | 1244.5 | 1244.5 | NULL | NULL | NULL |
+| 2026-01-15 13:00:00    | 1250.5 | 1250.5 | NULL | NULL | NULL |
 
 After inserting these rows, the first record after the gap (14:00) no longer shows a 30 kWh spike — the consumption is spread evenly across the missing hours.
 
@@ -220,7 +220,7 @@ VALUES
 
 [Description](#spike_description) | [Causes](#spike_causes) | [Manifestation](#spike_manifestation) | [Detection](#spike_detect) | [Fix](#spike_fix)
 
-<a id="spike_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="spike_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Statistics contain obviously wrong values due to sensor glitches, measurement errors, or data corruption.
 
 <a id="spike_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -344,11 +344,11 @@ ORDER BY ABS(consumption / NULLIF(avg_24h_consumption, 1)) DESC
 LIMIT 50;
 ```
 
-| period              | counter_value | cumulative_sum | hourly_consumption | avg_24h | spike_multiplier | spike_status              | issue_description |
-|---------------------|---------------|----------------|-------------------|---------|------------------|---------------------------|-------------------|
-| 2026-01-15 13:00:00 | 1255.2        | 1255.2         | 2500.0            | 2.5     | 1000.0           | ❌ EXTREME SPIKE (>10x)  | Unrealistic consumption spike  |
-| 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2             | 2.3     | -19.7            | ❌ NEGATIVE consumption  | Counter decreased |
-| 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5              | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)    | |
+| period              | counter_value | cumulative_sum | hourly_consumption | avg_24h | spike_multiplier | spike_status            | issue_description             |
+| --------------------- | --------------- | ---------------- | -------------------- | --------- | ------------------ | ------------------------- | ------------------------------- |
+| 2026-01-15 13:00:00 | 1255.2        | 1255.2         | 2500.0             | 2.5     | 1000.0           | ❌ EXTREME SPIKE (>10x) | Unrealistic consumption spike |
+| 2026-01-20 08:00:00 | 1305.8        | 1305.8         | -45.2              | 2.3     | -19.7            | ❌ NEGATIVE consumption | Counter decreased             |
+| 2026-02-01 14:00:00 | 1450.0        | 1450.0         | 18.5               | 2.4     | 7.7              | ⚠️ LARGE SPIKE (>5x)  |                               |
 
 <a id="spike_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Fix</span>
 
@@ -368,12 +368,12 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 
 Suppose the detection query found a spike at 13:00 with consumption of 2500 kWh (normal baseline ~2.5 kWh/h), followed by a compensating drop at 14:00:
 
-| period | sum | consumption | status |
-|---|---|---|---|
-| 12:00 | 1250.0 | 2.5 | OK (before spike) |
-| 13:00 | 3750.0 | 2500.0 | ❌ SPIKE |
-| 14:00 | 1255.0 | -2495.0 | ❌ COMPENSATION |
-| 15:00 | 1257.5 | 2.5 | OK (after glitch) |
+| period | sum    | consumption | status            |
+| -------- | -------- | ------------- | ------------------- |
+| 12:00  | 1250.0 | 2.5         | OK (before spike) |
+| 13:00  | 3750.0 | 2500.0      | ❌ SPIKE          |
+| 14:00  | 1255.0 | -2495.0     | ❌ COMPENSATION   |
+| 15:00  | 1257.5 | 2.5         | OK (after glitch) |
 
 The fix: replace the two glitch records (13:00 and 14:00) with interpolated values based on the records before (12:00) and after (15:00):
 
@@ -409,10 +409,10 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 
 [Description](#deleted_description) | [Causes](#deleted_causes) | [Manifestation](#deleted_manifestation) | [Detection](#deleted_detect) | [Fix](#deleted_fix)
 
-<a id="deleted_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="deleted_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Statistics remain in the database for entities that no longer exist in Home Assistant.
 
-An entity is considered **truly deleted** when it has been removed from the **Entity Registry** — the authoritative source that tracks all registered entities in HA. This is distinct from simply being absent from the `states_meta` table (see [Important limitation](#deleted_limitation) below).
+An entity is considered **truly deleted** when it has been removed from the active section of **Entity Registry** but still present in the deleted section. **Entity Registry** is the authoritative source that tracks all registered entities in HA. This is distinct from simply being absent from the `states_meta` table (see [Important limitation](#deleted_limitation) below).
 
 <a id="deleted_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
@@ -434,18 +434,18 @@ An entity is considered **truly deleted** when it has been removed from the **En
 
 statistics_meta table:
 
-| statistic_id                  | source   | unit | has_sum | |
-|-------------------------------|----------|------|---------| |
-| sensor.old_temperature        | recorder | °C   | 0       | ← Entity deleted |
-| sensor.removed_power_meter    | recorder | W    | 0       | ← Integration removed |
-| sensor.current_temperature    | recorder | °C   | 0       | ← Still exists |
+| statistic_id               | source   | unit | has_sum |
+| -------------------------- | -------- | ---- | ------- |
+| sensor.old_temperature     | recorder | °C   | 0       |
+| sensor.removed_power_meter | recorder | W    | 0       |
+| sensor.current_temperature | recorder | °C  | 0       |
 
 <a id="deleted_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
 The SQL query below finds `statistics_meta` entries whose `statistic_id` does not appear in `states_meta`. This is a **useful approximation** but has an important limitation — see the warning below.
 
 ```sql
--- Find statistics for entities that no longer exist in Home Assistant
+-- Find candidates: not present in recorder states metadata
 -- indicates number of records attached to the deleted entity
 SELECT sm.id as stats_meta_id, 
        sm.statistic_id, 
@@ -462,9 +462,9 @@ GROUP BY sm.id, sm.statistic_id, sm.source, sm.unit_of_measurement
 ORDER BY sm.statistic_id;
 ```
 
-| statistic_id           | record_count | Issue |
-|------------------------|--------------|-------|
-| sensor.old_temperature | 8760         | ← Has lots of data |
+| statistic_id           | record_count | Issue                  |
+| ---------------------- | ------------ | ---------------------- |
+| sensor.old_temperature | 8760         | ← Has lots of data     |
 | sensor.failed_sensor   | 0            | ← Never generated data |
 
 <a id="deleted_limitation"></a>
@@ -476,7 +476,7 @@ ORDER BY sm.statistic_id;
     - **Temporarily unavailable integrations**: If an integration was offline or unavailable for a period, its entities may not have generated any state changes yet.
     - **Newly added entities**: An entity that was just registered but has not yet reported a state will not appear in `states_meta`.
     - **Excluded from Recorder**: Entities explicitly excluded from the Recorder via `exclude` filters will never appear in `states_meta`, but they still exist in HA.
-
+  
     The only **authoritative source** for determining whether an entity truly exists is the **Entity Registry** (`entity_registry`), which is managed in-memory by HA Core and persisted in `.storage/core.entity_registry`. This registry is **not accessible via SQL** — it requires the HA Python API (e.g., `entity_registry.async_get(entity_id)`).
 
     **Recommendation**: Treat the SQL query results as *candidates* for deletion, not as a definitive list. Before deleting statistics, verify that the entity is genuinely absent by checking:
@@ -517,7 +517,7 @@ WHERE statistic_id = 'sensor.old_temperature';
 
 [Description](#orphan_description) | [Causes](#orphan_causes) | [Manifestation](#orphan_manifestation) | [Detection](#orphan_detect) | [Fix](#orphan_fix)
 
-<a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="orphan_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Orphaned entities are entities that exist in the database but are no longer claimed by any active integration. Unlike deleted entities (section 5.3) where the entity record is completely removed, orphaned entities remain in the `states_meta` table in a "zombie" state — still present but disconnected from any working integration.
 
 Home Assistant considers an entity orphaned only after it has been unclaimed since the last restart. At restart, HA checks whether each entity is still claimed by an integration. If not, it writes a final state record with `state = NULL` to the `states` table, effectively marking the entity as orphaned.
@@ -548,12 +548,12 @@ Orphan statistics are the statistics records associated with these orphaned enti
 
 After removing a Zigbee power meter integration and restarting HA:
 
-| Table | Entry | State |
-|-------|-------|-------|
-| `states_meta` | `sensor.zigbee_power` | exists |
-| `states` (latest) | `sensor.zigbee_power` | `NULL` ← marked orphaned at restart |
-| `statistics_meta` | `sensor.zigbee_power` | exists (has_sum=1) |
-| `statistics` | `sensor.zigbee_power` | 8760 records ← historical data, no new data coming |
+| Table             | Entry                 | State                                               |
+| ------------------- | ----------------------- | ----------------------------------------------------- |
+| `states_meta`     | `sensor.zigbee_power` | exists                                              |
+| `states` (latest) | `sensor.zigbee_power` | `NULL` ← marked orphaned at restart                |
+| `statistics_meta` | `sensor.zigbee_power` | exists (has_sum=1)                                  |
+| `statistics`      | `sensor.zigbee_power` | 8760 records ← historical data, no new data coming |
 
 <a id="orphan_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Detection</span>
 
@@ -616,7 +616,7 @@ WHERE statistic_id = 'sensor.zigbee_power';
 
 [Description](#renamed_description) | [Causes](#renamed_causes) | [Manifestation](#renamed_manifestation) | [Detection](#renamed_detect) | [Fix](#renamed_fix)
 
-<a id="renamed_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="renamed_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Entity was renamed, but statistics remain under the old `entity_id`, causing apparent data loss.
 
 <a id="renamed_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -641,10 +641,10 @@ New: sensor.lounge_temperature
 
 statistics_meta shows:
 
-| statistic_id                     | Last record       | |
-|----------------------------------|-------------------|---|
-| sensor.living_room_temperature   | 2025-12-15        | ← All history here |
-| sensor.lounge_temperature        | 2025-12-16 →      | ← New data here |
+| statistic_id                   | Last record   |                     |
+| -------------------------------- | --------------- | --------------------- |
+| sensor.living_room_temperature | 2025-12-15    | ← All history here |
+| sensor.lounge_temperature      | 2025-12-16 → | ← New data here    |
 
 <a id="renamed_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Renamed Entities Detection</span>
 
@@ -724,7 +724,7 @@ WHERE statistic_id = 'sensor.living_room_temperature';
 
 [Description](#reset_description) | [Causes](#reset_causes) | [Manifestation](#reset_manifestation) | [Detection](#reset_detect) | [Fix](#reset_fix)
 
-<a id="reset_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="reset_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 A `total_increasing` counter reset to zero, but the statistics system didn't detect it, resulting in negative or missing consumption data.
 
 <a id="reset_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -783,11 +783,11 @@ When a counter reset is missed, the `sum` freezes at its pre-reset value and sub
 
 Using the example above (reset at 12:00, state dropped from 1255 to 5):
 
-| period | state | sum (broken) | sum (fixed) | explanation |
-|---|---|---|---|---|
-| 11:00 | 1255 | 1255 | 1255 | OK — last record before reset |
-| 12:00 | 5 | 1255 | 1260 | Reset: sum = 1255 + 5 (new state) |
-| 13:00 | 8 | 1258 | 1263 | sum = 1260 + (8 - 5) = 1263 |
+| period | state | sum (broken) | sum (fixed) | explanation                       |
+| -------- | ------- | -------------- | ------------- | ----------------------------------- |
+| 11:00  | 1255  | 1255         | 1255        | OK — last record before reset    |
+| 12:00  | 5     | 1255         | 1260        | Reset: sum = 1255 + 5 (new state) |
+| 13:00  | 8     | 1258         | 1263        | sum = 1260 + (8 - 5) = 1263       |
 
 ```sql
 -- Fix missed counter reset: recalculate sum from the reset point onward
@@ -825,7 +825,7 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 
 [Description](#meantype_description) | [Causes](#meantype_causes) | [Manifestation](#meantype_manifestation) | [Detection](#meantype_detect) | [Fix](#meantype_fix)
 
-<a id="meantype_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="meantype_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Non-angular data is being processed with circular mean, or angular data with arithmetic mean.
 
 <a id="meantype_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -923,7 +923,7 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 
 [Description](#neg_description) | [Causes](#neg_causes) | [Manifestation](#neg_manifestation) | [Detection](#neg_detect) | [Fix](#neg_fix)
 
-<a id="neg_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="neg_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 A `total_increasing` counter shows negative state or sum values, which violates the monotonic increase constraint.
 
 <a id="neg_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -946,11 +946,11 @@ A `total_increasing` counter shows negative state or sum values, which violates 
 
 statistics table:
 
-| start_ts   | state  | sum    | Issue                    |
-|------------|--------|--------|--------------------------|
-| 1735574400 | 1250.5 | 1250.5 | OK                       |
+| start_ts   | state  | sum    | Issue                      |
+| ------------ | -------- | -------- | ---------------------------- |
+| 1735574400 | 1250.5 | 1250.5 | OK                         |
 | 1735578000 | -5.2   | 1245.3 | ⚠️ Negative state value! |
-| 1735581600 | 8.7    | 1254.0 | Recovered                |
+| 1735581600 | 8.7    | 1254.0 | Recovered                  |
 
 <a id="neg_detect"></a><span style="font-size: 1.2em; font-weight: bold;">Negative Values Detection</span>
 
@@ -1022,7 +1022,7 @@ WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor
 
 [Description](#orphmeta_description) | [Causes](#orphmeta_causes) | [Manifestation](#orphmeta_manifestation) | [Detection](#orphmeta_detect) | [Fix](#orphmeta_fix)
 
-<a id="orphmeta_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>  
+<a id="orphmeta_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
 Entries in `statistics_meta` table have no corresponding records in `statistics` or `statistics_short_term` tables.
 
 <a id="orphmeta_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -1044,9 +1044,9 @@ Entries in `statistics_meta` table have no corresponding records in `statistics`
 
 statistics_meta entry exists:
 
-| id | statistic_id              | unit | has_sum |
-|----|---------------------------|------|---------|
-| 99 | sensor.phantom_sensor     | kWh  | 1       |
+| id | statistic_id          | unit | has_sum |
+| ---- | ----------------------- | ------ | --------- |
+| 99 | sensor.phantom_sensor | kWh  | 1       |
 
 But querying statistics:
 
@@ -1104,5 +1104,13 @@ WHERE id NOT IN (SELECT DISTINCT metadata_id FROM statistics)
 
 ---
 
-**Previous** - [Part 4: Best Practices and Troubleshooting](part4_practices_troubleshooting.md)
-**Next** - [Appendix 1: Mysterious Statistics Fields](apdx1_stat_fields.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../part4_practices_troubleshooting/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Part 4: Best Practices and Troubleshooting</span>
+  </a>
+  <a href="../apdx1_stat_fields/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Appendix 1: Statistics Fields »</span>
+  </a>
+</div>

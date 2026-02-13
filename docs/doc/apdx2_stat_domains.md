@@ -1,4 +1,4 @@
-# Examples of statistics from non-sensor domains
+# Appendix 2: Examples of statistics from non-sensor domains
 
 This document provides real-world examples of how statistics can be generated from non-sensor domains in Home Assistant.
 
@@ -219,5 +219,13 @@ Now you get statistics showing how often and how much you manually adjust temper
 
 ...can generate statistics, regardless of domain! The most common non-sensor examples are **`number`** and **`input_number`** entities used for tracking configuration changes, setpoints, and user inputs over time.
 
-**Previous** - [Appendix 1: Statistics Fields](apdx1_stat_fields.md)
-**Next** - [Appendix 3: Setting Units of Measurement](apdx3_set_units.md)
+<div class="nav-prevnext" markdown="0">
+  <a href="../apdx1_stat_fields/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Appendix 1: Statistics Fields</span>
+  </a>
+  <a href="../apdx3_set_units/" class="nav-next">
+    <span class="nav-label">Next</span>
+    <span class="nav-title">Appendix 3: Setting Units of Measurement »</span>
+  </a>
+</div>

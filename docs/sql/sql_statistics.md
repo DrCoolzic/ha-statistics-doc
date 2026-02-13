@@ -130,6 +130,22 @@ GROUP BY hour_of_day
 ORDER BY hour_of_day;
 ```
 
+## TODO Example: Hourly Energy Consumption
+
+```sql
+SELECT 
+  sm.statistic_id,
+  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
+  s.sum as cumulative_sum,
+  s.sum - LAG(s.sum) OVER (ORDER BY s.start_ts) as period_consumption
+FROM statistics s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.linky_east'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 12:00:00'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 15:00:00'
+ORDER BY s.start_ts;
+```
+
 ## Queries statistics to find entities: matching state / deleted from state / external
 
 ### Count each category

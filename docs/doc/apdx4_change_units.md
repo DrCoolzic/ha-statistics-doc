@@ -1,7 +1,8 @@
 
-# Changing Unit of Measurement
+# Appendix 4: Changing Unit of Measurement
 
-THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED - Probably contains inaccurate information
+!!! Danger "Under construction - Probably contains inaccurate information"
+    THIS PART STILL NEEDS TO BE REVIEWED/CORRECTED
 
 ## Overview
 
@@ -930,4 +931,10 @@ DELETE FROM statistics_meta WHERE id = 42;
 
 ---
 
-**Previous** - [Appendix 2: Setting Units](apdx3_set_units.md)  
+<div class="nav-prevnext" markdown="0">
+  <a href="../apdx3_set_units/" class="nav-prev">
+    <span class="nav-label">Previous</span>
+    <span class="nav-title">« Appendix 3: Setting Units of Measurement</span>
+  </a>
+  <span class="nav-placeholder"></span>
+</div>

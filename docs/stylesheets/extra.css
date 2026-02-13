@@ -59,6 +59,61 @@
   }
 }
 
+/* Previous / Next navigation boxes */
+.nav-prevnext {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.nav-prevnext a {
+  display: block;
+  padding: 0.9rem 1.2rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: var(--md-typeset-a-color);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nav-prevnext a:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.nav-prevnext .nav-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.nav-prevnext .nav-title {
+  font-weight: 600;
+}
+
+.nav-prevnext .nav-prev {
+  text-align: left;
+}
+
+.nav-prevnext .nav-next {
+  text-align: right;
+}
+
+/* Placeholder to keep grid layout when only one link exists */
+.nav-prevnext .nav-placeholder {
+  visibility: hidden;
+}
+
+@media (max-width: 600px) {
+  .nav-prevnext {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Use full page width */
 .md-grid {
   max-width: 100%;

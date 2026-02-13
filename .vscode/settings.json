@@ -12,6 +12,7 @@
         "montry",
         "orphmeta",
         "postgresql",
+        "prevnext",
         "pymdownx",
         "pymysql",
         "Pythonic",
