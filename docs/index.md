@@ -32,6 +32,8 @@ hide:
       <li><strong>Troubleshooters</strong> dealing with missing data, spikes, or incorrect values</li>
       <li><strong>Power users</strong> who want to query and manipulate the database directly</li>
     </ul>
+    <h3>Important notes</h3>
+    <p>This documentation is based on Home Assistant documents and thorough testing, so it should be relatively accurate. However, it will inevitably contain errors or omissions — HA evolves quickly and some behaviors are not well documented.</p>
   </div>
   <div>
     <h2>Documentation structure</h2>
