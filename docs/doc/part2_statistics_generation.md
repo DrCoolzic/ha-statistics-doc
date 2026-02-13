@@ -362,11 +362,11 @@ flowchart TB
         UI["• Energy Dashboard<br/>• Statistics Graph Card<br/>• History Panel (auto-uses stats for long ranges)<br/>• Custom queries and integrations"]
     end
     
-    classDef coreBox fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
-    classDef recorderBox fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef compilerBox fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef statsBox fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    classDef frontendBox fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef coreBox stroke:#0288d1,stroke-width:2px
+    classDef recorderBox stroke:#f57c00,stroke-width:2px
+    classDef compilerBox stroke:#7b1fa2,stroke-width:2px
+    classDef statsBox stroke:#388e3c,stroke-width:2px
+    classDef frontendBox stroke:#c2185b,stroke-width:2px
     
     class HA coreBox
     class Recorder recorderBox
