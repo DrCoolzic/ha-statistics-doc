@@ -1,41 +1,100 @@
 
 # Useful SQL Queries for Accessing Statistics Information
 
-## Retrieve measurement statistics between specific dates
+## Retrieve a counter statistic
+
+### MariaDB version
 
 ```sql
--- MySQL version
 SELECT 
     sm.statistic_id,
     CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) as period_start,
     CONVERT_TZ(FROM_UNIXTIME(s.created_ts), '+00:00', @@session.time_zone) as created_at,
-    s.mean,
-    s.min,
-    s.max
+    s.state,
+    ROUND(s.sum, 3) as sum,
+    sm.unit_of_measurement
 FROM statistics_short_term s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
-WHERE sm.statistic_id = 'sensor.family_temperature'
-  AND CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) >= '2026-01-27 13:00:00'
-  AND CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) < '2026-01-27 14:00:00'
-ORDER BY s.start_ts ASC;
+WHERE sm.statistic_id = 'sensor.linky_east'
+ORDER BY s.start_ts ASC
+LIMIT 10;
 ```
 
-```sqlite
--- SQLite version
+statistic_id | period_start | created_at | state | sum | unit_of_measurement
+--- | --- | --- | --- | --- | ---
+sensor.linky_east | 2026-02-06 05:15:00.000000 | 2026-02-06 05:20:10.520860 | 72712.88 | 39919.804 | kWh
+sensor.linky_east | 2026-02-06 05:20:00.000000 | 2026-02-06 05:25:10.550654 | 72712.976 | 39919.900 | kWh
+sensor.linky_east | 2026-02-06 05:25:00.000000 | 2026-02-06 05:30:10.514289 | 72713.056 | 39919.980 | kWh
+sensor.linky_east | 2026-02-06 05:30:00.000000 | 2026-02-06 05:35:10.558005 | 72713.136 | 39920.060 | kWh
+
+### SQLite version
+
+```sql
 SELECT 
     sm.statistic_id,
     datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
     datetime(s.created_ts, 'unixepoch', 'localtime') as created_at,
-    s.mean,
+    s.state,
+    s.sum,
+    sm.unit_of_measurement
+FROM statistics s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.linky_sinsts'
+ORDER BY s.start_ts ASC
+LIMIT 10;
+```
+
+## Retrieve measurement statistics between specific dates
+
+### MySQL version
+
+```sql
+SELECT 
+    sm.statistic_id,
+    CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) as period_start,
+    CONVERT_TZ(FROM_UNIXTIME(s.created_ts), '+00:00', @@session.time_zone) as created_at,
+    ROUND(s.mean,3) as mean,
+    s.min,
+    s.max
+FROM statistics s
+INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
+WHERE sm.statistic_id = 'sensor.e3_tcu10_x07_return_temperature'
+  AND CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) >= '2026-02-01 13:00:00'
+  AND CONVERT_TZ(FROM_UNIXTIME(s.start_ts), '+00:00', @@session.time_zone) < '2026-02-25 14:00:00'
+ORDER BY s.start_ts ASC;
+```
+
+statistic_id | period_start | created_at | mean | min | max
+--- | --- | --- | --- | --- | ---
+sensor.e3_tcu10_x07_return_temperature | 2026-02-01 13:00:00.000000 | 2026-02-01 14:00:10.909333 | 35.608 | 35.6 | 36.1
+sensor.e3_tcu10_x07_return_temperature | 2026-02-01 14:00:00.000000 | 2026-02-01 15:00:10.897885 | 34.832 | 34.6 | 35.6
+sensor.e3_tcu10_x07_return_temperature | 2026-02-01 15:00:00.000000 | 2026-02-01 16:00:10.871697 | 34.191 | 34.1 | 34.6
+
+### SQLite version
+
+```sql
+SELECT 
+    sm.statistic_id,
+    datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
+    datetime(s.created_ts, 'unixepoch', 'localtime') as created_at,
+    ROUND(s.mean,3) as mean,
     s.min,
     s.max
 FROM statistics_short_term s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
 WHERE sm.statistic_id = 'sensor.linky_sinsts'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 13:00:00'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 14:00:00'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-02-01 13:00:00'
+  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-02-27 14:00:00'
 ORDER BY s.start_ts ASC;
 ```
+
+statistic_id | period_start | created_at | mean | min | max
+--- | --- | --- | --- | --- | ---
+sensor.linky_sinsts | 2/12/2026 11:45 | 2/12/2026 11:50 | 1639.871 | 1586 | 1696
+sensor.linky_sinsts | 2/12/2026 11:50 | 2/12/2026 11:55 | 1726.916 | 1696 | 1743
+sensor.linky_sinsts | 2/12/2026 11:55 | 2/12/2026 12:00 | 1698.855 | 1665 | 1739
+sensor.linky_sinsts | 2/12/2026 12:00 | 2/12/2026 12:05 | 1482.04 | 1468 | 1665
+sensor.linky_sinsts | 2/12/2026 12:05 | 2/12/2026 12:10 | 1523.787 | 1480 | 1665
 
 ## Compute average/min/max from measurement statistics for 7 days
 

@@ -9,7 +9,7 @@ __pycache__/
 *.pyd
 .VSCodeCounter/
 
-dcz/
+# dcz/
 
 # MkDocs plugin/theme caches (common)
 .cache/
