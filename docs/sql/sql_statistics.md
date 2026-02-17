@@ -39,8 +39,8 @@ SELECT
     sm.unit_of_measurement
 FROM statistics s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
-WHERE sm.statistic_id = 'sensor.linky_sinsts'
-ORDER BY s.start_ts ASC
+WHERE sm.statistic_id = 'sensor.linky_east'
+ORDER BY s.start_ts DESC
 LIMIT 10;
 ```
 
