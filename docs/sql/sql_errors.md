@@ -1,8 +1,8 @@
-# error
+# Useful SQL queries for error detection
 
-## 1 Gap in statistic
+## 1 Find Gap in statistic
 
-### for measurements
+### for measurement entities
 
 ```sql
 -- Check for gaps in statistics - SQLite version
@@ -60,10 +60,14 @@ ORDER BY gap_seconds DESC  -- Show largest gaps first
 LIMIT 50;
 ```
 
-### for counter
+### for counter entities
+
+#### Only show gaps
+
+**SQLite version**
 
 ```sql
--- Check for gaps in counter statistics (only show gaps) - SQLite
+-- Check for gaps in counter statistics (only show gaps)
 WITH gap_analysis AS (
   SELECT 
     datetime(start_ts, 'unixepoch', 'localtime') as period,
@@ -93,8 +97,10 @@ ORDER BY gap_seconds DESC
 LIMIT 50;
 ```
 
+**MariaDB version**
+
 ```sql
--- Check for gaps in counter statistics (only show gaps) - MariaDB
+-- Check for gaps in counter statistics (only show gaps)
 WITH gap_analysis AS (
   SELECT 
     FROM_UNIXTIME(start_ts) as period,
@@ -154,6 +160,10 @@ WHERE s1.metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sen
 ORDER BY gap_hours DESC
 LIMIT 50;
 ```
+
+#### Show gaps with before/after context
+
+**MariaDB version**
 
 ```sql
 -- Show gaps with before/after context - MariaDB
@@ -216,8 +226,10 @@ ORDER BY start_ts DESC;
 
 ### for counters
 
+**SQLite version**
+
 ```sql
--- Find invalid spikes in counter statistics - SQLite
+-- Find invalid spikes in counter statistics
 WITH counter_analysis AS (
   SELECT 
     datetime(start_ts, 'unixepoch', 'localtime') as period,
@@ -271,8 +283,10 @@ ORDER BY ABS(consumption / NULLIF(avg_24h_consumption, 1)) DESC
 LIMIT 50;
 ```
 
+**MariaDB version**
+
 ```sql
--- Find invalid spikes in counter statistics - MariaDB (corrected)
+-- Find invalid spikes in counter statistics
 WITH consumption_calc AS (
   -- Step 1: Calculate consumption for each period
   SELECT 

@@ -1,9 +1,9 @@
 
 # Useful SQL Queries for Accessing Statistics Information
 
-## Retrieve a counter statistic
+## Statistic values for a specific counter entity
 
-### MariaDB version
+**MariaDB version**
 
 ```sql
 SELECT 
@@ -16,18 +16,11 @@ SELECT
 FROM statistics_short_term s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
 WHERE sm.statistic_id = 'sensor.linky_east'
-ORDER BY s.start_ts ASC
+ORDER BY s.start_ts DESC
 LIMIT 10;
 ```
 
-statistic_id | period_start | created_at | state | sum | unit_of_measurement
---- | --- | --- | --- | --- | ---
-sensor.linky_east | 2026-02-06 05:15:00.000000 | 2026-02-06 05:20:10.520860 | 72712.88 | 39919.804 | kWh
-sensor.linky_east | 2026-02-06 05:20:00.000000 | 2026-02-06 05:25:10.550654 | 72712.976 | 39919.900 | kWh
-sensor.linky_east | 2026-02-06 05:25:00.000000 | 2026-02-06 05:30:10.514289 | 72713.056 | 39919.980 | kWh
-sensor.linky_east | 2026-02-06 05:30:00.000000 | 2026-02-06 05:35:10.558005 | 72713.136 | 39920.060 | kWh
-
-### SQLite version
+**SQLite version**
 
 ```sql
 SELECT 
@@ -44,9 +37,16 @@ ORDER BY s.start_ts DESC
 LIMIT 10;
 ```
 
-## Retrieve measurement statistics between specific dates
+statistic_id | period_start | created_at | state | sum | unit_of_measurement
+--- | --- | --- | --- | --- | ---
+sensor.linky_east | 2026-02-06 05:15:00.000000 | 2026-02-06 05:20:10.520860 | 72712.88 | 39919.804 | kWh
+sensor.linky_east | 2026-02-06 05:20:00.000000 | 2026-02-06 05:25:10.550654 | 72712.976 | 39919.900 | kWh
+sensor.linky_east | 2026-02-06 05:25:00.000000 | 2026-02-06 05:30:10.514289 | 72713.056 | 39919.980 | kWh
+sensor.linky_east | 2026-02-06 05:30:00.000000 | 2026-02-06 05:35:10.558005 | 72713.136 | 39920.060 | kWh
 
-### MySQL version
+## Statistics values for measurement entity between specific dates
+
+**MariaDB version**
 
 ```sql
 SELECT 
@@ -70,7 +70,7 @@ sensor.e3_tcu10_x07_return_temperature | 2026-02-01 13:00:00.000000 | 2026-02-01
 sensor.e3_tcu10_x07_return_temperature | 2026-02-01 14:00:00.000000 | 2026-02-01 15:00:10.897885 | 34.832 | 34.6 | 35.6
 sensor.e3_tcu10_x07_return_temperature | 2026-02-01 15:00:00.000000 | 2026-02-01 16:00:10.871697 | 34.191 | 34.1 | 34.6
 
-### SQLite version
+**SQLite version**
 
 ```sql
 SELECT 
@@ -111,7 +111,9 @@ WHERE sm.statistic_id = 'sensor.montry_temperature'
 GROUP BY sm.statistic_id;
 ```
 
-## Retrieve counter statistics between specific dates  -- SQLite version
+## Retrieve counter statistics between specific dates
+
+**SQLite version**
 
 ```sql
 -- Retrieve stat and compute delta (growth)
@@ -137,15 +139,21 @@ ORDER BY s.start_ts ASC;
 SELECT 
     sm.statistic_id,
     datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
-    s.mean,
+    ROUND(s.mean, 3) as mean,
     s.min,
     s.max
 FROM statistics s
 INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
 WHERE sm.statistic_id = 'sensor.montry_temperature'
-  AND DATE(datetime(s.start_ts, 'unixepoch', 'localtime')) = '2026-01-25'
+  AND DATE(datetime(s.start_ts, 'unixepoch', 'localtime')) = '2026-02-17'
 ORDER BY s.start_ts ASC;
 ```
+
+statistic_id | period_start | mean | min | max
+--- | --- | --- | --- | ---
+sensor.montry_temperature | 2/17/2026 0:00 | 6.1 | 6.1 | 6.1
+sensor.montry_temperature | 2/17/2026 1:00 | 6.002 | 6 | 6.1
+sensor.montry_temperature | 2/17/2026 2:00 | 6.196 | 6 | 6.2
 
 ## Calculate daily consumption from sum
 
@@ -159,10 +167,14 @@ FROM statistics s
 JOIN statistics_meta sm ON s.metadata_id = sm.id
 WHERE sm.statistic_id = 'sensor.linky_east'
   AND s.sum IS NOT NULL
-  AND DATE(datetime(s.start_ts, 'unixepoch', 'localtime')) = '2026-01-25'
+  AND DATE(datetime(s.start_ts, 'unixepoch', 'localtime')) = '2026-02-18'
 GROUP BY DATE(datetime(s.start_ts, 'unixepoch', 'localtime'))
 ORDER BY date DESC;
 ```
+
+statistic_id | date | daily_total | unit_of_measurement
+--- | --- | --- | ---
+sensor.linky_east | 2/18/2026 | 2800 | Wh
 
 ## Calculate Hourly Consumption (Energy Used Per Hour)
 
@@ -189,23 +201,7 @@ GROUP BY hour_of_day
 ORDER BY hour_of_day;
 ```
 
-## TODO Example: Hourly Energy Consumption
-
-```sql
-SELECT 
-  sm.statistic_id,
-  datetime(s.start_ts, 'unixepoch', 'localtime') as period_start,
-  s.sum as cumulative_sum,
-  s.sum - LAG(s.sum) OVER (ORDER BY s.start_ts) as period_consumption
-FROM statistics s
-INNER JOIN statistics_meta sm ON s.metadata_id = sm.id
-WHERE sm.statistic_id = 'sensor.linky_east'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') >= '2026-01-27 12:00:00'
-  AND datetime(s.start_ts, 'unixepoch', 'localtime') < '2026-01-27 15:00:00'
-ORDER BY s.start_ts;
-```
-
-## Queries statistics to find entities: matching state / deleted from state / external
+## Queries statistics to find entities with: active state / deleted state / external state
 
 ### Count each category
 
@@ -214,7 +210,7 @@ SELECT
     COUNT(DISTINCT sm_stats.statistic_id) as total_statistics,
     COUNT(DISTINCT CASE 
         WHEN sm_states.entity_id IS NOT NULL THEN sm_stats.statistic_id 
-    END) as matching_entities,
+    END) as active_entities,
     COUNT(DISTINCT CASE 
         WHEN sm_states.entity_id IS NULL 
         AND sm_stats.statistic_id LIKE '%.%' 
@@ -228,6 +224,10 @@ SELECT
 FROM statistics_meta sm_stats
 LEFT JOIN states_meta sm_states ON sm_stats.statistic_id = sm_states.entity_id;
 ```
+
+total_statistics | active_entities | deleted_entities | external_entities
+--- | --- | --- | ---
+84 | 84 | 0 | 0
 
 ### List entities in categories active/external/deleted
 
@@ -251,6 +251,12 @@ FROM statistics_meta sm_stats
 LEFT JOIN states_meta sm_states ON sm_stats.statistic_id = sm_states.entity_id
 ORDER BY category, sm_stats.statistic_id;
 ```
+
+category | statistic_id | source | unit_of_measurement | has_sum | type
+--- | --- | --- | --- | --- | ---
+Active | sensor.e3_vitocal_boiler_supply_temperature | recorder | °C | 0 | Measurement
+Active | sensor.e3_vitocal_compressor_hours | recorder | h | 1 | Counter/Total
+Active | sensor.e3_vitocal_outside_temperature | recorder | °C | 0 | Measurement
 
 ### List ONLY Deleted Entities
 
@@ -375,3 +381,14 @@ LEFT JOIN statistics s ON sm_stats.id = s.metadata_id
 GROUP BY sm_stats.statistic_id, sm_stats.source, sm_stats.unit_of_measurement, sm_stats.has_sum, sm_states.entity_id
 ORDER BY category, sm_stats.statistic_id;
 ```
+
+statistic_id | unit | source | category | type | sample_count | first_seen | last_seen | days_span
+--- | --- | --- | --- | --- | --- | --- | --- | ---
+sensor.e3_vitocal_boiler_temperature | °C | recorder | Internal | Measurement | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.e3_vitocal_compressor_hours | h | recorder | Internal | Counter | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.e3_vitocal_compressor_starts |  | recorder | Internal | Counter | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.e3_vitocal_supply_pressure | bar | recorder | Internal | Measurement | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.ecs_current | A | recorder | Internal | Measurement | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.ecs_energy | kWh | recorder | Internal | Counter | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.ecs_energy_returned | kWh | recorder | Internal | Counter | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2
+sensor.ecs_power | W | recorder | Internal | Measurement | 149 | 2/12/2026 11:00 | 2/18/2026 15:00 | 6.2

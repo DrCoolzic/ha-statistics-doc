@@ -180,9 +180,9 @@ ORDER BY s.last_updated_ts DESC;
 
 entity_id | state | last_updated | last_changed | latitude | altitude
 --- | --- | --- | --- | --- | ---
-device_tracker.sm_p620 | home | 2/12/2026 13:15 | 2/12/2026 13:15 | 4x.8843104 | 109
-device_tracker.sm_p620 | home | 2/12/2026 13:10 | 2/12/2026 13:10 | 4x.8843104 | 109
-device_tracker.sm_p620 | home | 2/12/2026 12:02 | 2/12/2026 12:02 | 4x.8843104 | 109
+device_tracker.sm_p620 | home | 2/12/2026 13:15 | 2/12/2026 13:15 | 4x.xx | 109
+device_tracker.sm_p620 | home | 2/12/2026 13:10 | 2/12/2026 13:10 | 4x.xx | 109
+device_tracker.sm_p620 | home | 2/12/2026 12:02 | 2/12/2026 12:02 | 4x.xx | 109
 
 ```sql
 -- MariaDB version
@@ -274,35 +274,6 @@ friendly_name | SM-P620 | text
 gps_accuracy | 100 | integer
 longitude | 2.xxx | real
 
-
-## Explore Nested JSON Structure - If you have nested JSON objects (SQLite)
-
-```SQL
-SELECT 
-    fullkey,
-    value,
-    type,
-    path
-FROM (
-    SELECT sa.shared_attrs
-    FROM states s
-    INNER JOIN states_meta sm ON s.metadata_id = sm.metadata_id
-    LEFT JOIN state_attributes sa ON s.attributes_id = sa.attributes_id
-    WHERE sm.entity_id = 'device_tracker.sm_p620'
-    ORDER BY s.last_updated_ts DESC
-    LIMIT 1
-),
-json_tree(shared_attrs)
-WHERE type != 'object'  -- Skip container objects, show only values
-ORDER BY fullkey;
-```
-
-This shows the full path for nested values like:
-  $.latitude → 48.xx
-  $.longitude → 2.xx
-  $.location.address.city → "Paris"
-  $.location.address.country → "France"
-
 ## Track movement between consecutive states (SQLite)
 
 ```sql
@@ -338,7 +309,6 @@ device_tracker.sm_a546b | 2/17/2026 16:38 | 48.xx | 2.xx | 48.zz | 2.zz | 4.422
 device_tracker.sm_a546b | 2/17/2026 16:38 | 48.xx | 2.xx | 48.zz | 2.zz | 3.656
 
 ## Display All Attributes with name/value/type
-
 
 ```sql
 SELECT 

@@ -194,6 +194,7 @@ LIMIT 50;
 ```
 
 ## Step 5 (optional) — Replace the `0` delta in the break hour with an estimate
+
 Note: not a good idea
 
 After Step 3, the break hour often becomes `0` because continuity was forced. If you prefer an estimated value, this single statement:
