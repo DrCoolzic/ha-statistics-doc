@@ -45,7 +45,7 @@ nav:
       - Part 3 - Working with Statistics : doc/part3_working_with_statistics.md
       - Part 4 - Best Practices and Troubleshooting: doc/part4_practices_troubleshooting.md
       - Part 5 - Find & Fix Statistics Errors: doc/part5_find_fix.md
-      - Part 6 - Statistics Migration Guideline: doc/Part6_migrate.md
+      - Part 6 - Statistics Migration Guideline: doc/part6_migrate.md
       - Appendix 1 - Mysterious Table Fields: doc/apdx1_stat_fields.md
       - Appendix 2 - Statistics domains: doc/apdx2_stat_domains.md
       # - Appendix 3 - Units of Measurement: doc/apdx3_set_units.md
