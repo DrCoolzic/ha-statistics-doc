@@ -49,6 +49,8 @@ hide:
     Choosing the right state_class, recorder configuration, and common pitfalls.</p>
     <p><a href="doc/part5_find_fix"><strong>Part 5 — Find & Fix Statistics Errors</strong></a><br/>
     Detect and repair data gaps, spikes, orphaned entries, counter resets, and more.</p>
+    <p><a href="doc/part6_migrate"><strong>Part 6 — Statistics Migration Guideline</strong></a><br/>
+    Migrate statistics from one Home Assistant instance to another.</p>
     <p><a href="doc/apdx1_stat_fields"><strong>Appendix 1 — Mysterious Table Fields</strong></a><br/>
     Deep dive into <code>created_ts</code> and <code>mean_weight</code> fields.</p>
     <p><a href="doc/apdx2_stat_domains"><strong>Appendix 2 — Statistics Domains</strong></a><br/>

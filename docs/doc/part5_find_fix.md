@@ -1,13 +1,23 @@
 # Part 5: Find & Fix Errors in Statistics
 
+## Overview
+
 Over time, errors may appear in the statistical database for various reasons. This part describes the different types of errors, how to identify them, and methods to correct them. Understanding the error type is the first step toward fixing it.
+
+For each type of error, we will cover:
+
+- Error Type Definition
+- The causes of the error
+- The manifestation of the error in the UI and database
+- How to detect the error mainly using SQL queries
+- How to fix the error (if possible) using Home Assistant tools,SQL queries or [homeassistant-statistics integration](https://github.com/klausj1/homeassistant-statistics)
 
 ---
 
 **Quick jump table**
 
-| Error Type Definition                                                          | Detection                           | Fix                           |
-| -------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------- |
+| Error Type                                                                     | Detection                           | Fix                           |
+| ------------------------------------------------------------------------------ | ----------------------------------- | ----------------------------- |
 | [Missing Statistics (Data Gaps)](#51-missing-statistics)                       | [gap_detect](#gap_detect)           | [gap_fix](#gap_fix)           |
 | [Invalid Data / Spikes](#52-invalid-data--spikes)                              | [spike_detect](#spike_detect)       | [spike_fix](#spike_fix)       |
 | [Statistics on Deleted Entities](#53-statistics-on-deleted-entities)           | [deleted_detect](#deleted_detect)   | [deleted_fix](#deleted_fix)   |
@@ -18,47 +28,52 @@ Over time, errors may appear in the statistical database for various reasons. Th
 | [Negative Values in Total_Increasing](#58-negative-values-in-total_increasing) | [neg_detect](#neg_detect)           | [neg_fix](#neg_fix)           |
 | [Orphaned Statistics Metadata](#59-orphaned-statistics-metadata)               | [orphmeta_detect](#orphmeta_detect) | [orphmeta_fix](#orphmeta_fix) |
 
-Errors can be detected by using Developer Tools, SQL queries, or monitoring logs... Some errors can be fixed automatically, others require manual intervention. But the **best practice** is to prevent errors in the first place.
+Most errors can be prevented by following **best practices**.
 
 1. **Validate before deploying**
-   - Test sensor configuration in developer template tool
-   - Check `state_class` matches data type
-   - Verify units before adding statistics
+
+    - Test sensor configuration in developer template tool
+    - Check `state_class` matches data type
+    - Verify units before adding statistics
+
 2. **Use availability templates**
-   - Filter out 'unavailable' and 'unknown' states
-   - Validate numeric values
-   - Prevent glitch propagation
+
+    - Filter out 'unavailable' and 'unknown' states
+    - Validate numeric values
+    - Prevent glitch propagation
+
 3. **Plan changes carefully**
-   - Don't change units mid-stream
-   - Rename entities via statistics migration tools
-   - Test state_class changes on non-production data
+
+    - Don't change units mid-stream
+    - Rename entities via statistics migration tools
+    - Test state_class changes on non-production data
+
 4. **Regular monitoring**
-   - Check Developer Tools → Statistics weekly
-   - Review Settings → System → Repairs
-   - Monitor log files for warnings
+
+    - Check Developer Tools → Statistics weekly
+    - Review Settings → System → Repairs
+    - Monitor log files for warnings
+
 5. **Backup before modifications**
-   - Always backup `home-assistant_v2.db` before direct SQL
-   - Export critical statistics before migration
-   - Test fixes on database copy first
+
+    - Always backup `home-assistant_v2.db` before direct SQL
+    - Export critical statistics before migration
+    - Test fixes on database copy first
 
 ---
 
-Each error manifests differently in the UI and database.
-We are going to cover the most common errors in this document and provide information on how to fix them.
-
-> **Note about Unit of Measurement**
+<!-- > **Note about Unit of Measurement**
 > Unit of Measurement selection and modification is a complex process that deserves its own treatment. It is covered separately in the appendices:
 > [Appendix 3: How HA Selects and Displays Units](apdx3_set_units.md) and
-> [Appendix 4: Changing Units of Measurement](apdx4_change_units.md).
-
----
+> [Appendix 4: Changing Units of Measurement](apdx4_change_units.md). -->
 
 ## **5.1 Missing Statistics**
 
 [Description](#gap_description) | [Causes](#gap_causes) | [Manifestation](#gap_manifestation) | [Detection](#gap_detect) | [Fix](#gap_fix)
 
 <a id="gap_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
-Periods where no statistics were recorded despite the entity existing and presumably having data. This is a common issue when the integration was not running or home assistant was shutdown.
+
+Periods where no statistics were recorded despite the entity existing and presumably having data. This is a common issue when the integration was not running, or home assistant was shutdown, or the sensor stopped delivering data.
 
 <a id="gap_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
 
@@ -80,7 +95,7 @@ Periods where no statistics were recorded despite the entity existing and presum
 
 **Counter entities:**
 
-- Missing bars in bar chart (energy dashboard)
+- Bars with zero value in bar chart (energy dashboard)
 - Discontinuity in cumulative sum (A large variation crushes the values around it.)
 - Appears as zero consumption for that period
 
@@ -93,14 +108,10 @@ The SQL queries differs for [measurement](#gap_detect_measurement) and [counter]
 <a id="gap_detect_measurement"></a>**Query for Measurement**
 
 ```sql
--- Check for gaps in statistics - SQLite version
--- Only shows rows with gaps (WHERE gap_seconds > 3600)
--- Shows gap size in hours for easier reading
--- Distinguishes between regular gaps (>1h) and large gaps (>2h)
--- Sorts by largest gaps first (most problematic)
+-- Check for gaps in statistics. Only shows rows with small gaps (>1h) and large gaps (>2h)
 WITH gap_analysis AS (
   SELECT 
-    datetime(start_ts, 'unixepoch') as period,
+    datetime(start_ts, 'unixepoch', 'localtime') as period,
     mean,
     start_ts,
     LAG(start_ts) OVER (ORDER BY start_ts) as previous_ts,
@@ -113,7 +124,7 @@ SELECT
   mean,
   gap_seconds / 3600.0 as gap_hours,
   CASE 
-    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP (>2 hours)'
+    WHEN gap_seconds > 7200 THEN '⚠️ LARGE GAP'
     WHEN gap_seconds > 3600 THEN '⚠️ GAP DETECTED'
   END as gap_severity
 FROM gap_analysis
@@ -124,10 +135,9 @@ LIMIT 50;
 
 | period                     | mean               | gap_hours | gap_severity              |
 | ---------------------------- | -------------------- | ----------- | --------------------------- |
-| 2025-01-22 19:00:00.000000 | 17.69790881333039  | 7         | ⚠️ LARGE GAP (>2 hours) |
-| 2023-12-03 17:00:00.000000 | 19.725162957811452 | 3         | ⚠️ LARGE GAP (>2 hours) |
-| 2023-09-21 16:00:00.000000 | 22.09918343405555  | 2         | ⚠️ GAP DETECTED         |
-| 2023-02-05 10:00:00.000000 | 18.800000000000004 | 2         | ⚠️ GAP DETECTED         |
+| 2025-01-22 19:00:00 | 17.69790881333039  | 7         | ⚠️ LARGE GAP |
+| 2023-12-03 17:00:00 | 19.725162957811452 | 3         | ⚠️ LARGE GAP |
+| 2023-09-21 16:00:00 | 22.09918343405555  | 2         | ⚠️ GAP DETECTED         |
 
 <a id="gap_detect_counter"></a>**Query for Counter**
 
@@ -138,7 +148,7 @@ SELECT
   datetime(s1.start_ts, 'unixepoch', 'localtime') as last_record_before_gap,
   s1.state as state_before,
   s1.sum as sum_before,
-  '⚠️ --- GAP ---' as gap_indicator,
+  '⚠️ GAP DETECTED' as gap_indicator,
   ROUND((s2.start_ts - s1.start_ts) / 3600.0, 1) as gap_hours,
   datetime(s2.start_ts, 'unixepoch', 'localtime') as first_record_after_gap,
   s2.state as state_after,
@@ -165,14 +175,14 @@ LIMIT 50;
 
 | last before gap     | state before | sum before | gap indicator | gap hours | first after gap     | state after | sum after | sum change across gap | gap impact                  |
 | --------------------- | -------------- | ------------ | --------------- | ----------- | --------------------- | ------------- | ----------- | ----------------------- | ----------------------------- |
-| 2026-01-15 08:00:00 | 1220.5       | 1220.5     | ⚠️ GAP      | 6.0       | 2026-01-15 14:00:00 | 1250.5      | 1250.5    | 30.0                  | ⚠️ Consumption during gap |
-| 2026-01-20 03:00:00 | 1305.2       | 1305.2     | ⚠️ GAP      | 3.0       | 2026-01-20 06:00:00 | 1305.2      | 1305.2    | 0.0                   | ❌ No consumption recorded  |
+| 2026-01-15 08:00:00 | 1220.5       | 1220.5     | ⚠️ GAP DETECTED    | 6.0       | 2026-01-15 14:00:00 | 1250.5      | 1250.5    | 30.0                  | ⚠️ Consumption during gap |
+| 2026-01-20 03:00:00 | 1305.2       | 1305.2     | ⚠️ GAP DETECTED     | 3.0       | 2026-01-20 06:00:00 | 1305.2      | 1305.2    | 0.0                   | ❌ No consumption recorded  |
 
 <a id="gap_fix"></a><span style="font-size: 1.2em; font-weight: bold;">Missing Statistics Fix</span>
 
 **For measurement entities** (e.g., temperature, humidity): there is not much that can be done. We cannot guess what the values would have been during the gap. The graph will simply show a blank area for the missing period. This is generally acceptable — it honestly reflects that no data was collected.
 
-**For counter entities** (e.g., energy, water, gas): while we also cannot guess the actual consumption pattern during the gap, the real problem is what happens **after** the gap. The first record after the gap contains the entire accumulated consumption for the missing period in a single hourly entry. This creates an ugly spike on bar graphs (e.g., the energy dashboard showing 30 kWh in one hour instead of ~6 kWh/h spread over 5 hours).
+**For counter entities** (e.g., energy, water, gas): while we also cannot guess the actual consumption pattern during the gap, the real problem is what happens **after** the gap. The first record after the gap contains the entire **accumulated consumption** for the missing period in a single hourly entry. This creates an ugly spike on bar graphs (e.g., the energy dashboard showing 30 kWh in one hour instead of ~6 kWh/h spread over 5 hours).
 
 The fix is to **insert interpolated rows** that distribute the consumption evenly across the gap.
 
@@ -181,26 +191,21 @@ The fix is to **insert interpolated rows** that distribute the consumption evenl
 - Gap: 2026-01-15 **08:00** → **14:00** (6 hours gap = 5 missing entries at 09, 10, 11, 12, 13)
 - `sum` before gap: 1220.5, after gap: 1250.5 → delta = 30.0
 - `state` before gap: 1220.5, after gap: 1250.5 → delta = 30.0
-- Interpolation: each missing row gets a consumption increment of 30.0 / 5 = **6.0**
+- Interpolation: each missing row gets a consumption increment (delta) of 30.0 / 5 = **6.0**
 
 The interpolated rows to insert would be:
 
-| start_ts (as datetime) | state  | sum    | mean | min  | max  |
-| ------------------------ | -------- | -------- | ------ | ------ | ------ |
-| 2026-01-15 09:00:00    | 1226.5 | 1226.5 | NULL | NULL | NULL |
-| 2026-01-15 10:00:00    | 1232.5 | 1232.5 | NULL | NULL | NULL |
-| 2026-01-15 11:00:00    | 1238.5 | 1238.5 | NULL | NULL | NULL |
-| 2026-01-15 12:00:00    | 1244.5 | 1244.5 | NULL | NULL | NULL |
-| 2026-01-15 13:00:00    | 1250.5 | 1250.5 | NULL | NULL | NULL |
+| start_ts (as datetime) | state  | sum    |
+| ---------------------- | ------ | ------ |
+| 2026-01-15 09:00:00    | 1226.5 | 1226.5 |
+| 2026-01-15 10:00:00    | 1232.5 | 1232.5 |
+| 2026-01-15 11:00:00    | 1238.5 | 1238.5 |
+| 2026-01-15 12:00:00    | 1244.5 | 1244.5 |
+| 2026-01-15 13:00:00    | 1250.5 | 1250.5 |
 
-After inserting these rows, the first record after the gap (14:00) no longer shows a 30 kWh spike — the consumption is spread evenly across the missing hours.
+After inserting these rows in the statistics table, the first record after the gap (14:00) no longer shows a 30 kWh spike — the consumption is spread evenly across the missing hours.
 
-!!! warning "Important"
-    - `mean`, `min`, `max` are set to NULL since we don't know the actual values during the gap.
-    - The `metadata_id` must match the entity's id in `statistics_meta`.
-    - The `start_ts` values must be Unix timestamps (use `strftime('%s', '2026-01-15 09:00:00')` in SQLite).
-    - Always work on a **backup copy** of the database first.
-    - If `sum` did not change across the gap (delta = 0), there is no consumption to distribute — no fix is needed.
+To insert the interpolated rows, you can use the following SQL query:
 
 ```sql
 -- Example: Insert interpolated rows for a counter gap
@@ -214,13 +219,44 @@ VALUES
   (42, strftime('%s', '2026-01-15 13:00:00'), strftime('%s', 'now'), 1250.5, 1250.5, NULL, NULL, NULL);
 ```
 
+!!! warning "Important"
+    - `mean`, `min`, `max` are set to NULL since we don't know the actual values during the gap.
+    - The `metadata_id` must match the entity's id in `statistics_meta`.
+    - The `start_ts` values must be Unix timestamps (use `strftime('%s', '2026-01-15 09:00:00')` in SQLite).
+    - Always work on a **backup copy** of the database first.
+    - If `sum` did not change across the gap (delta = 0), there is no consumption to distribute — no fix is needed.
+
+If you do not fill confortable using SQL, you can use the [homeassistant-statistics integration](https://github.com/klausj1/homeassistant-statistics).
+For that you first need to write a file (e.g.fix_missing_data.csv) with the delta values to fix:
+
+```csv
+statistic_id,start,unit,delta
+sensor:linky_east,2026-01-15 09:00:00,kWh,6
+sensor:linky_east,2026-01-15 10:00:00,kWh,6
+sensor:linky_east,2026-01-15 11:00:00,kWh,6
+sensor:linky_east,2026-01-15 12:00:00,kWh,6
+sensor:linky_east,2026-01-15 13:00:00,kWh,6
+```
+
+You can use the service: import_statistics.import_from_file to import the file.
+
+```yaml
+action: import_statistics.import_from_file
+data:
+  filename: fix_missing_data.csv
+  decimal: dot ('.')
+```
+
 ---
 
-<a id="52-invalid-data--spikes"></a>## **5.2 Invalid Data / Spikes**
+## **5.2 Spikes / Invalid values**
+
+<a id="52-invalid-data--spikes"></a>
 
 [Description](#spike_description) | [Causes](#spike_causes) | [Manifestation](#spike_manifestation) | [Detection](#spike_detect) | [Fix](#spike_fix)
 
 <a id="spike_description"></a><span style="font-size: 1.2em; font-weight: bold;">Description</span>
+
 Statistics contain obviously wrong values due to sensor glitches, measurement errors, or data corruption.
 
 <a id="spike_causes"></a><span style="font-size: 1.2em; font-weight: bold;">Causes</span>
@@ -290,7 +326,7 @@ ORDER BY start_ts DESC;
 <a id="spike_detect_counter"></a><span style="font-size: 1.2em; font-weight: bold;">Spike Detection for Counter</span>
 
 ```sql
--- Find invalid spikes in counter statistics - SQLite
+-- Find invalid spikes in counter statistics
 WITH counter_analysis AS (
   SELECT 
     datetime(start_ts, 'unixepoch', 'localtime') as period,
@@ -304,7 +340,6 @@ WITH counter_analysis AS (
     AVG(sum - LAG(sum) OVER (ORDER BY start_ts)) OVER (
       ROWS BETWEEN 24 PRECEDING AND 1 PRECEDING
     ) as avg_24h_consumption,
-    -- Calculate standard deviation
     (sum - LAG(sum) OVER (ORDER BY start_ts)) as hourly_consumption
   FROM statistics
   WHERE metadata_id = (SELECT id FROM statistics_meta WHERE statistic_id = 'sensor.energy_total')
@@ -1109,8 +1144,8 @@ WHERE id NOT IN (SELECT DISTINCT metadata_id FROM statistics)
     <span class="nav-label">Previous</span>
     <span class="nav-title">« Part 4: Best Practices and Troubleshooting</span>
   </a>
-  <a href="../apdx1_stat_fields/" class="nav-next">
+  <a href="../part6_migrate/" class="nav-next">
     <span class="nav-label">Next</span>
-    <span class="nav-title">Appendix 1: Statistics Fields »</span>
+    <span class="nav-title">Part 6: Statistics Migration Guideline »</span>
   </a>
 </div>

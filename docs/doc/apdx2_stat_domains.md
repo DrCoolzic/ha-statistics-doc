@@ -224,8 +224,8 @@ Now you get statistics showing how often and how much you manually adjust temper
     <span class="nav-label">Previous</span>
     <span class="nav-title">« Appendix 1: Statistics Fields</span>
   </a>
-  <a href="../apdx3_set_units/" class="nav-next">
+  <!-- <a href="../apdx3_set_units/" class="nav-next">
     <span class="nav-label">Next</span>
     <span class="nav-title">Appendix 3: Setting Units of Measurement »</span>
-  </a>
+  </a> -->
 </div>

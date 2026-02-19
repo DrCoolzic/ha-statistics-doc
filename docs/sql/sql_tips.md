@@ -1,15 +1,17 @@
 # SQL Tips
 
-1. **Timestamps**: Home Assistant stores times as Unix timestamps (floating point). Use `datetime(timestamp, 'unixepoch', 'localtime')` to convert to readable dates.
+## General HA
+
+1. **Timestamps**: Home Assistant stores times as Unix timestamps (floating point). Use functions to convert to readable dates.
 2. **Entity relationships**: Always join `states` with `states_meta` to get the actual entity_id, and optionally with `state_attributes` for attributes.
 3. **Performance**: For large databases, add `WHERE` clauses to limit time ranges, especially when querying states or events.
-4. **JSON in attributes**: The `shared_attrs` field contains JSON data. In SQLite, you can parse it with `json_extract()` function.
+4. **JSON in attributes**: The `shared_attrs` field contains JSON data. You can parse it with `json_extract()` function.
 
 ---
 
 ## SQLite MySQL Dialect Differences
 
-|                            | SQLite                                | MySQL/MariaDB                                                          |
+|                            | SQLite                                | MariaDB                                                                |
 | -------------------------- | ------------------------------------- | ---------------------------------------------------------------------- |
 | Timestamp                  | `datetime(timestamp, 'unixepoch')`    |`FROM_UNIXTIME(timestamp)`                                              |
 | String Concatenation       |`'Hello' ??`                           | `CONCAT('Hello', ' ', 'World')`                                        |
@@ -70,40 +72,14 @@ LIMIT 10
 
 ## JSON
 
-|                                                                 | SQLite          | MySQL/MariaDB                                  |
-| --------------------------------------------------------------- | --------------- | ---------------------------------------------- |
-| Get specific field                                              | json_extract()  | JSON_EXTRACT() or -> operator  or ->> operator |
-| Iterate top level keys: returns table with key/value/type       | json_each()     | json_each()                                    |
-| Iterate all nested paths: returns table with fullkey/path/value | json_tree()     | json_tree()                                    |
-| Get keys                                                        | Use json_each() | json_keys()                                    |
-| Format JSON nicely for display purposes                         | json_pretty()   | json_pretty()                                  |
-| Get value type: 'text', 'integer', 'real', etc.                 | json_type()     | json_type()                                    |
-
-### MySQL JSON extraction shorthand operators
-
-  `->`  Returns JSON value (keeps quotes for strings)
-  `->>`  Returns unquoted string/scalar value (recommended for most cases)
-
-### Extract Multiple Attributes (MySQL)
-
-```sql
-SELECT 
-    sm.entity_id,
-    s.state,
-    FROM_UNIXTIME(s.last_updated_ts) as last_updated,
-    sa.shared_attrs->>'$.latitude' as latitude,
-    sa.shared_attrs->>'$.longitude' as longitude,
-    sa.shared_attrs->>'$.gps_accuracy' as gps_accuracy,
-    sa.shared_attrs->>'$.source_type' as source_type,
-    sa.shared_attrs->>'$.friendly_name' as friendly_name,
-    sa.shared_attrs->>'$.battery_level' as battery_level
-FROM states s
-INNER JOIN states_meta sm ON s.metadata_id = sm.metadata_id
-LEFT JOIN state_attributes sa ON s.attributes_id = sa.attributes_id
-WHERE sm.entity_id = 'device_tracker.sm_p620'
-ORDER BY s.last_updated_ts DESC
-LIMIT 20;
-```
+|                                                                 | SQLite          | MariaDB        |
+| --------------------------------------------------------------- | --------------- | -------------- |
+| Get specific field                                              | json_extract()  | JSON_EXTRACT() |
+| Iterate top level keys: returns table with key/value/type       | json_each()     | json_each()    |
+| Iterate all nested paths: returns table with fullkey/path/value | json_tree()     | json_tree()    |
+| Get keys                                                        | Use json_each() | json_keys()    |
+| Format JSON nicely for display purposes                         | json_pretty()   | json_pretty()  |
+| Get value type: 'text', 'integer', 'real', etc.                 | json_type()     | json_type()    |
 
 ### Filter by JSON Values (MySQL)
 
